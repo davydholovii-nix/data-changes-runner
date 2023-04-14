@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  database:
+    image: mysql:5.7
+    container_name: dumper_database
+    volumes:
+      # - ./sources/:/docker-entrypoint-initdb.d/
+      - ./sources/:/sources/
+      - ./var/data/:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dumper
+      MYSQL_USER: dumper
+      MYSQL_PASSWORD: dumper
+    ports:
+      - "33060:3306"
