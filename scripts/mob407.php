@@ -6,6 +6,6 @@ connect();
 
 $analyzer = new \App\Mob407\FixAnalyzer(dirname(__DIR__));
 $analyzer->run([
-    'force_recreate_users_table',
-    'force_recreate_payments_history_table',
+//    'force_recreate_users_table',
+//    'force_recreate_payments_history_table',
 ]);
