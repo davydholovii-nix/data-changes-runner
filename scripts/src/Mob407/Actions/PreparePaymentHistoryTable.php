@@ -32,9 +32,10 @@ class PreparePaymentHistoryTable
             $table->timestamp('created_at');
         });
 
-        $progress = new ProgressBar($output, Driver::query()->count());
+        $progress = new ProgressBar($output, Driver::query()->affected()->count());
 
         Driver::query()
+            ->affected()
             ->chunk(100, function ($drivers) use (&$progress) {
                 /** @var Driver[] $drivers */
                 foreach ($drivers as $driver) {

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $has_personal_sessions
  * @property bool $has_business_sessions
  * @property bool $is_affected
+ * @property bool $has_jan_only
  * @property float $balance
  *
  * @property-read PaymentHistory[]|\Illuminate\Database\Eloquent\Collection $payments
@@ -29,6 +30,7 @@ class Driver extends Model {
     protected $casts = [
         'has_personal_sessions' => 'bool',
         'has_business_sessions' => 'bool',
+        'has_jan_only' => 'bool',
         'is_affected' => 'bool',
         'balance' => 'float',
     ];
