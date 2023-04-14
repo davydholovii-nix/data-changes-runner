@@ -8,14 +8,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\StreamOutput;
 
-class DriversBusinessOnlyToRefund
+class CheckDriversBusinessOnlyToRefund
 {
     public static function query(): Builder
     {
         return Driver::query()
             ->affected()
             ->hasOnlyBusinessSessions()
-//            ->hasPaymentMethod()
+            ->hasPaymentMethod()
             ->where('balance', '>=', 0);
     }
 

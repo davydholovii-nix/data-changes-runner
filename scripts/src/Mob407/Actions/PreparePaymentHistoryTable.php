@@ -9,7 +9,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
-class CreatePaymentHistory
+class PreparePaymentHistoryTable
 {
     public static function run(ConsoleOutput $output, bool $force = false): void
     {

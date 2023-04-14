@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\StreamOutput;
 
-class DriversBusinessToResetPaidAndRefund
+class CheckDriversBusinessToResetPaidAndRefund
 {
     public static function query(): Builder
     {

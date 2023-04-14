@@ -1,8 +1,9 @@
 <?php
 
-namespace ChargePoint\Mob407\Models\Enums;
+namespace App\Mob407\Models\Enums;
 
-class TransactionType
+enum TransactionType: string
 {
-
+    case BUSINESS = 'BUSINESS';
+    case PERSONAL = 'PERSONAL';
 }

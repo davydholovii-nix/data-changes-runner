@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\StreamOutput;
 
-class DriversPersonalOnlyToRefund
+class CheckDriversPersonalOnlyToRefund
 {
     // TODO: MUST INCLUDE 24746895, 27110655
     public static function query(): Builder
