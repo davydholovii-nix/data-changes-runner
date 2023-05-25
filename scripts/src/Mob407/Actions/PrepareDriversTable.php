@@ -41,6 +41,7 @@ class PrepareDriversTable
 
             $uniqueUsersQuery = DB::table('external_vehicle_charge')
                 ->selectRaw('DISTINCT(user_id) as id')
+                ->join('external_vehicle_charge_ext', 'external_vehicle_charge_ext.evc_id', '=', 'external_vehicle_charge.id')
                 ->whereNotNull('user_id');
             Driver::query()
                 ->insertUsing(['id'], $uniqueUsersQuery);
@@ -58,6 +59,7 @@ class PrepareDriversTable
         ));
 
         if ($force) {
+            $output->writeln(" - Denormalizing user sessions details");
             $progress = new ProgressBar($output, $totalDrivers);
 
             // Detect if driver has personal sessions
@@ -127,6 +129,7 @@ class PrepareDriversTable
         ));
 
         if ($force) {
+            $output->writeln(" - Calculating driver balance and checking if driver is affected by MOB-407");
             $progress = new ProgressBar(
                 $output,
                 Driver::query()
@@ -152,6 +155,10 @@ class PrepareDriversTable
                                 ->first();
 
                             if ($firstPayment === null) { // Driver has no payments
+                                $output->writeln(sprintf(
+                                    "WARNING - Driver %d has no payments",
+                                    $driver->id
+                                ));
                                 continue;
                             }
 
