@@ -3,6 +3,7 @@
 namespace App\Mob407;
 
 use App\Mob407\Actions\CheckAlreadyResetDrivers;
+use App\Mob407\Actions\GenerateAffectedDriversList;
 use App\Mob407\Actions\PrepareDriversTable;
 use App\Mob407\Actions\PreparePaymentHistoryTable;
 use App\Mob407\Actions\CheckDriversBusinessOnlyToRefund;
@@ -52,6 +53,9 @@ class FixAnalyzer
 
         $this->output->writeln("Step 8: Create report of drivers with personal to refund only");
         CheckDriversPersonalOnlyToRefund::run($this->output, $reportFolder);
+
+        $this->output->writeln("Step 9: Affected drivers report");
+        GenerateAffectedDriversList::run($this->output, $reportFolder);
 
         $this->output->writeln("");
         $this->output->writeln("Verification:");
