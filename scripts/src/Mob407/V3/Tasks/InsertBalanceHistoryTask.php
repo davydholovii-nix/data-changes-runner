@@ -2,7 +2,7 @@
 
 namespace App\Mob407\V3\Tasks;
 
-use App\Mob407\V3\Tasks\Traits\HasExtraOutput;
+use App\Mob407\V3\Helpers\HasExtraOutput;
 use Illuminate\Database\Capsule\Manager as DB;
 use Illuminate\Database\Query\Expression;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -41,7 +41,8 @@ class InsertBalanceHistoryTask extends AbstractTask
                 }
             });
 
-        $this->getOutput()->write("\r", str_repeat(' ', 100));
+        $this->getOutput()->write("\x0D"); // Move the cursor to the beginning of the line
+        $this->getOutput()->write("\x1B[2K"); // Clear the entire line
     }
 
     private function insertDriverBalanceHistory(int $driverId): void
@@ -50,6 +51,7 @@ class InsertBalanceHistoryTask extends AbstractTask
             ->select([
                 'user_payment_log.id',
                 'user_payment_log.user_id',
+                'user_payment_log.vc_id',
                 'user_payment_log.amount',
                 'user_payment_log.account_balance',
                 'user_payment_log.type',
@@ -77,6 +79,8 @@ class InsertBalanceHistoryTask extends AbstractTask
             $insertItem = [];
             $insertItem['driver_id'] = $driverId;
             $insertItem['payment_log_id'] = $row->id;
+            $insertItem['session_id'] = $row->vc_id;
+            $insertItem['type'] = $row->type;
             $insertItem['amount'] = is_null($row->amount) ? 0.0 : $row->amount;
             $insertItem['balance'] = $row->account_balance;
             $insertItem['balance_before'] = $balanceBefore;
@@ -93,6 +97,10 @@ class InsertBalanceHistoryTask extends AbstractTask
                 $balanceBefore = $row->account_balance;
             } elseif ($diff !== 0) {
                 $balanceBefore = $row->account_balance;
+            }
+
+            if (is_null($row->vc_id) && $row->type != 8 && $row->is_business) {
+                throw new \Exception('Not handled use case');
             }
 
             if ($row->type == 8 && $diff != 0) {
