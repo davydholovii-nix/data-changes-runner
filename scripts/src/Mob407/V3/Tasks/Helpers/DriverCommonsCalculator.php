@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Mob407\V3\Tasks\Traits;
+namespace App\Mob407\V3\Tasks\Helpers;
 
 use App\Mob407\Models\PaymentLog;
 use Illuminate\Database\Capsule\Manager as DB;
@@ -21,6 +21,17 @@ trait DriverCommonsCalculator
             ->where('balance_diff', '<', 0)
             ->where('is_business', 1)
             ->exists();
+    }
+
+    public function getAffectedDate(int $driverId): string
+    {
+        return DB::table('balance_history')
+            ->where('driver_id', $driverId)
+            ->where('balance_diff', '<', 0)
+            ->where('is_business', 1)
+            ->orderBy('created_at', 'asc')
+            ->limit(1)
+            ->value('created_at');
     }
 
     protected function getBalance(int $driverId): float
@@ -63,16 +74,20 @@ trait DriverCommonsCalculator
 
     protected function hasIncome(int $driverId): bool
     {
+        $affectedDate = $this->getAffectedDate($driverId);
+
         return DB::table('user_payment_log')
             ->where('user_id', $driverId)
+            ->where('create_date', '>', $affectedDate)
             ->where('amount', '>', 0)
             ->whereIn('type', [1, 4])
-            ->where('transaction_status', 2)
+            ->where('status', 1)
             ->exists();
     }
 
     protected function hasRefunds(int $driverId): bool
     {
+        $affectedDate = $this->getAffectedDate($driverId);
         $refund = 2;
         $purchaseCard = 5;
         $promotion = 10;
@@ -80,6 +95,7 @@ trait DriverCommonsCalculator
 
         return DB::table('user_payment_log')
             ->where('user_id', $driverId)
+            ->where('create_date', '>', $affectedDate)
             ->where('amount', '>', 0)
             ->whereIn('type', [
                 $refund,
