@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Mob407\V3\Tasks\Traits;
+namespace App\Mob407\V3\Helpers;
 
 use Symfony\Component\Console\Output\StreamOutput;
 

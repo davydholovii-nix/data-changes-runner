@@ -27,6 +27,8 @@ class CreateBalanceHistoryTableTask extends AbstractTask
             $table->id();
             $table->unsignedInteger('driver_id')->index();
             $table->unsignedInteger('payment_log_id');
+            $table->unsignedInteger('session_id')->nullable();
+            $table->tinyInteger('type');
             $table->float('amount', 8, 2);
             $table->float('balance', 8, 2);
             $table->float('balance_before', 8, 2)->nullable();

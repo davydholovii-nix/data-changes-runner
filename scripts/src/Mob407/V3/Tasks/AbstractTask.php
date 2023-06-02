@@ -2,10 +2,13 @@
 
 namespace App\Mob407\V3\Tasks;
 
+use App\Mob407\V3\Helpers\HasLogger;
 use Symfony\Component\Console\Output\Output;
 
 abstract class AbstractTask
 {
+    use HasLogger;
+
     protected function __construct(
         private readonly Output $logger,
         private readonly Output $consoleOutput,
@@ -21,9 +24,9 @@ abstract class AbstractTask
         return $this->consoleOutput;
     }
 
-    protected function log(string $message, string $level = 'info'): void
+    protected function getLogger(): Output
     {
-        $this->logger->writeln(sprintf('[%s] %s %s', date('Y-m-d H:i:s'), strtoupper($level), $message));
+        return $this->logger;
     }
 
     abstract public function run(): void;

@@ -2,16 +2,17 @@
 
 namespace App\Mob407\V3\Tasks;
 
+use App\Mob407\V3\Helpers\HasExtraOutput;
+use App\Mob407\V3\Helpers\HasSources;
 use App\Mob407\V3\Models\Driver;
-use League\Csv\Reader;
-use Symfony\Component\Console\Helper\ProgressBar;
 use Illuminate\Database\Capsule\Manager as DB;
+use Symfony\Component\Console\Helper\ProgressBar;
 
 class InsertDriversWithBusinessSessionsTask extends AbstractTask
 {
-    use Traits\HasSources;
-    use Traits\DriverCommonsCalculator;
-    use Traits\HasExtraOutput;
+    use HasSources;
+    use Helpers\DriverCommonsCalculator;
+    use HasExtraOutput;
 
     public function run(): void
     {
@@ -55,6 +56,7 @@ class InsertDriversWithBusinessSessionsTask extends AbstractTask
             }
         }
 
-        $this->getOutput()->write("\r", str_repeat(' ', 100) . "\r");
+        $this->getOutput()->write("\x0D"); // Move the cursor to the beginning of the line
+        $this->getOutput()->write("\x1B[2K"); // Clear the entire line
     }
 }
