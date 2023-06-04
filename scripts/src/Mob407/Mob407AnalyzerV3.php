@@ -2,12 +2,18 @@
 
 namespace App\Mob407;
 
+use App\Mob407\V3\Reports\Group1Report;
+use App\Mob407\V3\Reports\Group2Report;
+use App\Mob407\V3\Reports\Group3Report;
+use App\Mob407\V3\Reports\GroupWithRefundsReport;
 use App\Mob407\V3\Tasks\CreateBalanceHistoryTableTask;
 use App\Mob407\V3\Tasks\CreateDriversTableTask;
 use App\Mob407\V3\Tasks\CreateDriversWithBusinessSessionsTableTask;
+use App\Mob407\V3\Tasks\GenerateFakeZeroPaymentLogsTask;
 use App\Mob407\V3\Tasks\InsertBalanceHistoryTask;
 use App\Mob407\V3\Tasks\InsertDriversFromDetailsFileTask;
 use App\Mob407\V3\Tasks\InsertDriversWithBusinessSessionsTask;
+use App\Mob407\V3\Verifier;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Console\Output\Output;
 use Symfony\Component\Console\Output\StreamOutput;
@@ -31,7 +37,7 @@ class Mob407AnalyzerV3
     public function run(array $options = self::DEFAULT_OPTIONS)
     {
         $logFile = $this->rootFolder . '/logs/mob407.log';
-        $log = fopen($logFile, 'w');
+        $log = fopen($logFile, 'a');
         $logger = new StreamOutput($log);
 
         $consoleOutput = new ConsoleOutput();
@@ -47,6 +53,35 @@ class Mob407AnalyzerV3
             $this->runDriversRecalculation($logger, $consoleOutput);
         }
 
+        $consoleOutput->writeln('Generating report Group 1');
+        Group1Report::init($logger, $consoleOutput, $this->reportsFolder . '/group1.csv')
+            ->addExtraOutput(Group1Report::REPORT_NAME, $this->reportsFolder . '/group1_drivers.txt')
+            ->generate();
+
+        $consoleOutput->writeln('Generating report Group 2');
+        Group2Report::init($logger, $consoleOutput, $this->reportsFolder . '/group2.csv')
+            ->addExtraOutput(Group2Report::REPORT_NAME, $this->reportsFolder . '/group2_drivers.txt')
+            ->generate();
+
+        $consoleOutput->writeln('Generating report Group 3');
+        Group3Report::init($logger, $consoleOutput, $this->reportsFolder . '/group3.csv')
+            ->addExtraOutput(Group3Report::REPORT_NAME, $this->reportsFolder . '/group3_drivers.txt')
+            ->generate();
+
+        $consoleOutput->writeln('Generating report of drivers with refunds');
+        GroupWithRefundsReport::init($logger, $consoleOutput, $this->reportsFolder . '/drivers_with_refunds.csv')
+            ->addExtraOutput(GroupWithRefundsReport::REPORT_NAME, $this->reportsFolder . '/drivers_with_refunds.txt')
+            ->generate();
+
+        $consoleOutput->writeln('Verification of covered cases');
+        Verifier::init($logger, $consoleOutput)
+            ->addSourceFile(Group1Report::REPORT_NAME, $this->reportsFolder . '/group1_drivers.txt')
+            ->addSourceFile(Group2Report::REPORT_NAME, $this->reportsFolder . '/group2_drivers.txt')
+            ->addSourceFile(Group3Report::REPORT_NAME, $this->reportsFolder . '/group3_drivers.txt')
+            ->addSourceFile(GroupWithRefundsReport::REPORT_NAME, $this->reportsFolder . '/drivers_with_refunds.txt')
+            ->verify();
+
+
         fclose($log);
     }
 
@@ -54,6 +89,11 @@ class Mob407AnalyzerV3
     {
         $consoleOutput->writeln(' - Creating users with business sessions');
         CreateDriversWithBusinessSessionsTableTask::init($logger, $consoleOutput)->run();
+
+        $consoleOutput->writeln(' - Generate fake 0.0 payment logs for drivers whose balance starts with negative');
+        GenerateFakeZeroPaymentLogsTask::init($logger, $consoleOutput)
+            ->addSourceFile('starts_with_negative', $this->sourcesDir . '/starts_with_negative_drivers_list.txt')
+            ->run();
 
         $consoleOutput->writeln(' - Done');
     }
@@ -76,6 +116,7 @@ class Mob407AnalyzerV3
         InsertDriversFromDetailsFileTask::init($logger, $consoleOutput)
             ->addSourceFile('driver_details', $this->sourcesDir . '/driver_details.csv')
             ->addSourceFile('organizations', $this->sourcesDir . '/organizations.csv')
+            ->addSourceFile('previously_fixed_group1', $this->sourcesDir . '/previously_fixed_group1.txt')
             ->addExtraOutput('starts_with_negative', $this->reportsFolder . '/starts_with_negative.txt')
             ->addExtraOutput('verify_manually', $this->reportsFolder . '/verify_manually.txt')
             ->run();
@@ -85,6 +126,7 @@ class Mob407AnalyzerV3
 
         InsertDriversWithBusinessSessionsTask::init($logger, $consoleOutput)
             ->addSourceFile('organizations', $this->sourcesDir . '/organizations.csv')
+            ->addSourceFile('previously_fixed_group1', $this->sourcesDir . '/previously_fixed_group1.txt')
             ->addExtraOutput('starts_with_negative', $this->reportsFolder . '/starts_with_negative.txt')
             ->addExtraOutput('verify_manually', $this->reportsFolder . '/verify_manually.txt')
             ->run();
