@@ -154,11 +154,22 @@ abstract class AbstractReport
 
     protected function getAmountToRefund(int $driverId): float
     {
-        return DB::table('balance_history')
-            ->where('driver_id', $driverId)
-            ->where('balance_diff', '<', 0)
-            ->where('is_business', 1)
-            ->sum('balance_diff');
+        $sql = "
+            SELECT SUM(amount) AS amount_to_refund
+            FROM clb_balance_history
+            WHERE driver_id = :driverId
+              AND balance_diff < 0
+              AND is_business = 1
+              AND type = 19
+        ";
+
+        $result = DB::select($sql, ['driverId' => $driverId]);
+
+        if (empty($result)) {
+            throw new \RuntimeException('No balance history for driver ' . $driverId);
+        }
+
+        return current($result)->amount_to_refund;
     }
 
     protected function getAffectedSessions(int $driverId): array

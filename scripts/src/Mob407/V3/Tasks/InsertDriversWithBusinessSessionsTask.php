@@ -43,8 +43,8 @@ class InsertDriversWithBusinessSessionsTask extends AbstractTask
 
             $insertItem['has_refunds'] = $this->hasRefunds($row->driver_id);
             $insertItem['balance'] = $this->getBalance($row->driver_id);
-            $insertItem['has_income'] = $insertItem['has_refunds'] && $this->hasIncome($row->driver_id);
-            $insertItem['has_personal_sessions'] = $insertItem['has_refunds'] && $this->hasPersonalSessions($row->driver_id);
+            $insertItem['has_income'] = (!$insertItem['has_refunds']) && $this->hasIncome($row->driver_id);
+            $insertItem['has_personal_sessions'] = (!$insertItem['has_refunds']) && $this->hasPersonalSessions($row->driver_id);
             $insertItem['org_code'] = '';
 
             $insert[] = $insertItem;

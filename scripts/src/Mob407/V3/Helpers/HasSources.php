@@ -23,4 +23,29 @@ trait HasSources
 
         return $this->sources[$key];
     }
+
+    protected function readAsCommaSeparatedList(string $key): array
+    {
+        $result = [];
+        $stream = fopen($this->getSourceFile($key), 'r');
+        $line = fgets($stream);
+
+        while ($line !== false) {
+            if (str_starts_with($line, '#') || str_starts_with($line, '//')) {
+                $line = fgets($stream);
+                continue;
+            }
+
+            $items = explode(',', $line);
+            $items = array_map('trim', $items);
+            $items = array_filter($items, fn ($item) => !empty($item));
+            $result = array_merge($result, $items);
+
+            $line = fgets($stream);
+        }
+
+        fclose($stream);
+
+        return $result;
+    }
 }

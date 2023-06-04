@@ -32,17 +32,17 @@ class InsertDriversFromDetailsFileTask extends AbstractTask
             $insertItem = $this->insertDataFormDetails($driver);
             $insertItem['has_business_sessions'] = $this->hasBusinessSessions($driver['driver_id']);
             if (!$insertItem['has_business_sessions']) {
-                $this->log('driver doesnt have business sessions ' . $driver['driver_id'], 'warning');
+                throw new \Exception(sprintf('The driver %d from driver details has no business sessions', $driver['driver_id']));
             }
             $insertItem['is_affected'] = $insertItem['has_business_sessions'] && $this->isAffected($driver['driver_id']);
             if (!$insertItem['is_affected']) {
-                $this->log('driver is not affected ' . $driver['driver_id'], 'warning');
+                throw new \Exception(sprintf('The driver %d from driver details file is not affected', $driver['driver_id']));
             }
             $insertItem['balance'] = $this->getBalance($driver['driver_id']);
+            $insertItem['org_code'] = $this->getOrganizationCode($driver['org_id'] ?? 0) ?: '';
             $insertItem['has_refunds'] = $insertItem['is_affected'] && $this->hasRefunds($driver['driver_id']);
-            $insertItem['org_code'] = $insertItem['has_refunds'] ? $this->getOrganizationCode($driver['org_id'] ?? 0) : '';
-            $insertItem['has_income'] =$insertItem['has_refunds'] && $this->hasIncome($driver['driver_id']);
-            $insertItem['has_personal_sessions'] = $insertItem['has_refunds'] && $this->hasPersonalSessions($driver['driver_id']);
+            $insertItem['has_income'] = (!$insertItem['has_refunds']) && $this->hasIncome($driver['driver_id']);
+            $insertItem['has_personal_sessions'] = (!$insertItem['has_refunds']) && $this->hasPersonalSessions($driver['driver_id']);
 
             $insert[] = $insertItem;
             $insertCount++;

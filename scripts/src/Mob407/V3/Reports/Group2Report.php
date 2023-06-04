@@ -17,11 +17,20 @@ class Group2Report extends AbstractReport
 
     protected function getQuery(): Builder
     {
+        /*
+         SELECT driver_id
+         FROM clb_drivers
+         WHERE is_affected = 1
+            AND (has_income = 1 OR has_personal_sessions = 1 OR balance > 0)
+            AND has_refunds = 0
+            AND balance >= 0
+        */
         return Driver::query()
             ->where('is_affected', 1)
             ->where(function (Builder $query) {
                 $query->where('has_income', 1)
-                    ->orWhere('has_personal_sessions', 1);
+                    ->orWhere('has_personal_sessions', 1)
+                    ->orWhere('balance', '>', 0);
             })
             ->where('has_refunds', 0)
             ->where('balance', '>=', 0);

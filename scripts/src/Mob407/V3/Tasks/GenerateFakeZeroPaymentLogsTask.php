@@ -6,7 +6,7 @@ use App\Mob407\V3\Helpers\HasSources;
 use Illuminate\Database\Capsule\Manager as DB;
 use Illuminate\Support\Collection;
 
-class GenerateFakePaymentLogsTask extends AbstractTask
+class GenerateFakeZeroPaymentLogsTask extends AbstractTask
 {
     use HasSources;
 

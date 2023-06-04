@@ -123,7 +123,9 @@ class InsertBalanceHistoryTask extends AbstractTask
 
     private function calculateDiff(\stdClass $row, float $balanceBefore): float
     {
-        if (!$row->status) {
+        if (!$row->status &&
+            $row->type !== 8 && $row->type !== 19 // status can be failed for business sessions who previously had personal payment source
+        ) {
             return 0.0;
         }
 

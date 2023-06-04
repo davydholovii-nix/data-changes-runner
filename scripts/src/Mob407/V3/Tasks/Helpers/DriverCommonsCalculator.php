@@ -10,41 +10,90 @@ trait DriverCommonsCalculator
 {
     private array $organizations = [];
 
+    /** @var null|array List of previously fixed drivers from the group 1 */
+    private ?array $previouslyFixedDrivers = null;
+
     abstract protected function writeExtra(string $key, string $message): void;
 
     abstract protected function log(string $message, string $level = 'info'): void;
 
+    abstract protected function getSourceFile(string $key): string;
+    abstract protected function readAsCommaSeparatedList(string $key): array;
+
+    protected function isPreviouslyFixed(int $driverId): bool
+    {
+        if (is_null($this->previouslyFixedDrivers)) {
+            $this->previouslyFixedDrivers = $this->readAsCommaSeparatedList('previously_fixed_group1');
+        }
+
+        return in_array($driverId, $this->previouslyFixedDrivers);
+    }
+
     protected function isAffected(int $driverId): bool
     {
-        return DB::table('balance_history')
-            ->where('driver_id', $driverId)
-            ->where('balance_diff', '<', 0)
-            ->where('is_business', 1)
-            ->exists();
+        if (!$this->isPreviouslyFixed($driverId)) { // Check by migration
+            $sql = "
+                SELECT session_id
+                FROM clb_balance_history
+                WHERE driver_id = ?
+                  AND balance_diff < 0
+                  AND is_business = 1
+                  AND type = 19
+                LIMIT 1
+            ";
+            return !empty(DB::connection()->select($sql, [$driverId]));
+        }
+
+        $dataFixDate = '2023-02-20 16:20:46';
+        $sql = "
+            SELECT 1 
+            FROM clb_user_payment_log
+            WHERE user_id = ?
+              AND create_date > ?
+              AND account_balance < 0
+            LIMIT 1
+        ";
+
+        return !empty(DB::connection()->select($sql, [$driverId, $dataFixDate]));
     }
 
     public function getAffectedDate(int $driverId): string
     {
-        return DB::table('balance_history')
-            ->where('driver_id', $driverId)
-            ->where('balance_diff', '<', 0)
-            ->where('is_business', 1)
-            ->orderBy('created_at', 'asc')
-            ->limit(1)
-            ->value('created_at');
+        $sql = "
+            SELECT created_at
+            FROM clb_balance_history
+            WHERE driver_id = ?
+            AND balance_diff < 0
+            AND is_business = 1
+            ORDER BY created_at
+            LIMIT 1
+        ";
+
+        $result = DB::connection()
+            ->select($sql, [$driverId]);
+
+        if (empty($result)) {
+            throw new \Exception(sprintf('Affected date for driver %d not found', $driverId));
+        }
+
+        return $result[0]->created_at;
     }
 
     protected function getBalance(int $driverId): ?float
     {
-        $balance = DB::table('user_payment_log')
-            ->where('user_id', $driverId)
-            ->whereNotNull('account_balance')
-            ->orderBy('create_date', 'desc')
-            ->first()
-            ?->account_balance;
+        $sql = "
+            SELECT account_balance
+            FROM clb_user_payment_log
+            WHERE user_id = ?
+            AND amount IS NOT NULL
+            AND (status = 1 OR type IN (8, 19))
+            ORDER BY create_date DESC, id DESC
+            LIMIT 1";
 
-        if (!is_null($balance)) {
-            return $balance;
+        $result = DB::connection()->select($sql, [$driverId]);
+
+        if (!empty($result)) {
+            return current($result)->account_balance;
         }
 
         $this->log(sprintf('Balance for driver %d not found. Default to zero', $driverId), 'warning');
@@ -61,34 +110,40 @@ trait DriverCommonsCalculator
 
     protected function hasPersonalSessions(int $driverId): bool
     {
-        return DB::table('external_vehicle_charge')
-            ->join(
-                'external_vehicle_charge_ext',
-                'external_vehicle_charge_ext.evc_id',
-                '=',
-                'external_vehicle_charge.id'
-            )
-            ->where('external_vehicle_charge_ext.transaction_type', 'BUSINESS')
-            ->where('external_vehicle_charge.user_id', $driverId)
-            ->exists();
+        $sql = "
+            SELECT evc.id, evce.transaction_type, evc.total_amount_to_user
+            FROM clb_external_vehicle_charge evc 
+            JOIN clb_external_vehicle_charge_ext evce ON evce.evc_id = evc.id 
+            WHERE evce.transaction_type = 'PERSONAL'
+            AND evc.user_id = ?
+            AND evc.total_amount_to_user > 0
+            LIMIT 1
+        ";
+
+        return !empty(DB::connection()->select($sql, [$driverId]));
     }
 
     protected function hasIncome(int $driverId): bool
     {
         $affectedDate = $this->getAffectedDate($driverId);
 
-        return DB::table('user_payment_log')
-            ->where('user_id', $driverId)
-            ->where('create_date', '>', $affectedDate)
-            ->where('amount', '>', 0)
-            ->whereIn('type', [1, 4])
-            ->where('status', 1)
-            ->exists();
+        $sql = "
+            SELECT 1
+            FROM clb_user_payment_log
+            WHERE user_id = ?
+            AND create_date >= ?
+            AND amount > 0
+            AND type IN (1, 4)
+            AND status = 1
+            LIMIT 1
+        ";
+
+        return !empty(DB::connection()->select($sql, [$driverId, $affectedDate]));
     }
 
     protected function hasRefunds(int $driverId): bool
     {
-        $affectedDate = $this->getAffectedDate($driverId);
+//        $affectedDate = $this->getAffectedDate($driverId);
         $refund = 2;
         $purchaseCard = 5;
         $promotion = 10;
@@ -96,7 +151,7 @@ trait DriverCommonsCalculator
 
         return DB::table('user_payment_log')
             ->where('user_id', $driverId)
-            ->where('create_date', '>', $affectedDate)
+//            ->where('create_date', '>', $affectedDate)
             ->where('amount', '>', 0)
             ->whereIn('type', [
                 $refund,
