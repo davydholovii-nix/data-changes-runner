@@ -38,9 +38,9 @@ class InsertDriversFromDetailsFileTask extends AbstractTask
             if (!$insertItem['is_affected']) {
                 $this->log('driver is not affected ' . $driver['driver_id'], 'warning');
             }
+            $insertItem['balance'] = $this->getBalance($driver['driver_id']);
             $insertItem['has_refunds'] = $insertItem['is_affected'] && $this->hasRefunds($driver['driver_id']);
             $insertItem['org_code'] = $insertItem['has_refunds'] ? $this->getOrganizationCode($driver['org_id'] ?? 0) : '';
-            $insertItem['balance'] = $insertItem['has_refunds'] ? $this->getBalance($driver['driver_id']) : 0.0;
             $insertItem['has_income'] =$insertItem['has_refunds'] && $this->hasIncome($driver['driver_id']);
             $insertItem['has_personal_sessions'] = $insertItem['has_refunds'] && $this->hasPersonalSessions($driver['driver_id']);
 

@@ -34,13 +34,14 @@ trait DriverCommonsCalculator
             ->value('created_at');
     }
 
-    protected function getBalance(int $driverId): float
+    protected function getBalance(int $driverId): ?float
     {
         $balance = DB::table('user_payment_log')
             ->where('user_id', $driverId)
+            ->whereNotNull('account_balance')
             ->orderBy('create_date', 'desc')
-            ->limit(1)
-            ->value('account_balance');
+            ->first()
+            ?->account_balance;
 
         if (!is_null($balance)) {
             return $balance;
@@ -48,7 +49,7 @@ trait DriverCommonsCalculator
 
         $this->log(sprintf('Balance for driver %d not found. Default to zero', $driverId), 'warning');
 
-        return 0.0;
+        return null;
     }
 
     protected function hasBusinessSessions(int $driverId): bool
@@ -136,10 +137,5 @@ trait DriverCommonsCalculator
         fclose($csv);
 
         return $result;
-    }
-
-    private function equal(float $a, float $b): bool
-    {
-        return $a * 100 == $b * 100;
     }
 }

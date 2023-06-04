@@ -34,7 +34,7 @@ class CreateDriversTableTask extends AbstractTask
             $table->string('country_code')->nullable();
             $table->string('pref_lang')->nullable();
             $table->string('org_code')->nullable();
-            $table->float('balance')->default(0.0);
+            $table->float('balance')->nullable();
             $table->boolean('is_affected')->default(false);
             $table->boolean('has_business_sessions')->default(false);
             $table->boolean('has_personal_sessions')->default(false);
