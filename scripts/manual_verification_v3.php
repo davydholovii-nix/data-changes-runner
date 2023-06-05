@@ -29,6 +29,10 @@ $countAll = $reader->count();
 
 while ($rowNum <= $countAll) {
     $row = $reader->fetchOne($rowNum);
+    if (empty($row)) {
+        break;
+    }
+
     $consoleOutput->writeln('');
     $consoleOutput->writeln('Row #' . $rowNum . '/' . $countAll);
     $consoleOutput->writeln('Driver ID: ' . $row['Driver ID']);
