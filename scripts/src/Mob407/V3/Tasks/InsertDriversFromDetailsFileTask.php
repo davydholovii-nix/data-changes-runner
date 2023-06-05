@@ -23,9 +23,6 @@ class InsertDriversFromDetailsFileTask extends AbstractTask
         $progress = new ProgressBar($this->getOutput(), $reader->count());
         $progress->start();
 
-        $insert = [];
-        $insertCount = 0;
-
         foreach ($reader->getRecords() as $driver) {
             $progress->advance();
 
@@ -44,14 +41,7 @@ class InsertDriversFromDetailsFileTask extends AbstractTask
             $insertItem['has_income'] = (!$insertItem['has_refunds']) && $this->hasIncome($driver['driver_id']);
             $insertItem['has_personal_sessions'] = (!$insertItem['has_refunds']) && $this->hasPersonalSessions($driver['driver_id']);
 
-            $insert[] = $insertItem;
-            $insertCount++;
-
-            if ($insertCount === 200) {
-                DB::table('drivers')->insert($insert);
-                $insert = [];
-                $insertCount = 0;
-            }
+            DB::table('drivers')->insert($insertItem);
         }
 
         fclose($csv);

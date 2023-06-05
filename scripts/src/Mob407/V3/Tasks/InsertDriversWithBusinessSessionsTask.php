@@ -56,6 +56,10 @@ class InsertDriversWithBusinessSessionsTask extends AbstractTask
             }
         }
 
+        if (count($insert) > 0) {
+            DB::table('drivers')->insert($insert);
+        }
+
         $this->getOutput()->write("\x0D"); // Move the cursor to the beginning of the line
         $this->getOutput()->write("\x1B[2K"); // Clear the entire line
     }
