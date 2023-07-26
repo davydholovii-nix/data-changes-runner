@@ -35,10 +35,25 @@ use Illuminate\Database\Eloquent\Model;
  * @method static EloquentBuilder byUser(int $userId)
  */
 class PaymentLog extends Model {
+
+    const TYPE_ROAMING_SESSION = 19;
+
     protected $table = 'user_payment_log';
 
     public function session() {
         return $this->belongsTo(Session::class, 'vc_id', 'id')->with('details');
     }
 
+    public function isIncome(): bool
+    {
+        if ($this->type == 1 && $this->amount > 0 && $this->status == 1) {
+            return true;
+        }
+
+        if ($this->type == 4 && $this->amount < 0 && $this->status == 1) {
+            return true;
+        }
+
+        return false;
+    }
 }

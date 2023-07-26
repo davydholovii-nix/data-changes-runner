@@ -22,6 +22,6 @@ class Session extends Model {
     }
 
     public function isBusiness() {
-        return $this->details->transaction_type == TransactionType::BUSINESS;
+        return $this->details?->transaction_type == TransactionType::BUSINESS;
     }
 }

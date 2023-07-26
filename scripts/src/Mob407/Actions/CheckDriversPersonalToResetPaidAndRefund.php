@@ -24,8 +24,8 @@ class CheckDriversPersonalToResetPaidAndRefund
         /** @var Driver[]|Collection $drivers */
         $drivers = self::query()->get();
 
-        $reportFile = $reportFolder . '/drivers_with_personal_to_reset_paid_and_refund.csv';
-        $reportOutput = new StreamOutput(fopen($reportFile, 'w+'));
+        $reportFile = $reportFolder . '/group_3.csv';
+        $reportOutput = new StreamOutput(fopen($reportFile, 'a'));
 
         DriverReportWithRefund::print($drivers, $reportOutput);
 
