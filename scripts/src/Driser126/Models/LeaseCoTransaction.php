@@ -46,7 +46,7 @@ class LeaseCoTransaction extends Model
 {
     protected $table = 'leaseco_transaction';
 
-    protected $connection = \Env::QA->value;
+    protected $connection = \Env::LocalCoulomb->value;
 
     public function userLogin(): BelongsTo
     {

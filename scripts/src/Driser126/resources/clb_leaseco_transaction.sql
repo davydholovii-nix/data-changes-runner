@@ -6,7 +6,7 @@ CREATE TABLE `clb_leaseco_transaction` (
    `employer_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
    `driver_name` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
    `transaction_type` tinyint(2) DEFAULT NULL COMMENT '1 = public session, 2=home session,3=home installation,4=monthly driver fee',
-   `installation_status` tinyint(2) DEFAULT NULL COMMENT 'Deprecated; 0 = Unset, 1 = Not Scheduled, 2 = Scheduled, 3 = Completed, 4 = Higher Cost, 5 = Uninstallable, 6 = Unresponsive, 7 = Other',
+   `installation_status` tinyint(2) DEFAULT NULL COMMENT 'Deprecated. 0 = Unset, 1 = Not Scheduled, 2 = Scheduled, 3 = Completed, 4 = Higher Cost, 5 = Uninstallable, 6 = Unresponsive, 7 = Other',
    `installation_date` datetime DEFAULT NULL,
    `installer_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
    `installer_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

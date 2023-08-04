@@ -41,6 +41,16 @@ class InstallerJob extends Model
         'synced_to_nos' => 'bool',
     ];
 
+    public static function findForDriverAndConnection(int $driverId, int $connectionId): ?InstallerJob
+    {
+        /** @var InstallerJob|null $installerJob */
+        $installerJob = static::query()
+            ->whereHas('request', fn ($query) => $query->where('driver_id', $driverId)->where('connection_id', $connectionId))
+            ->first();
+
+        return $installerJob;
+    }
+
     public function request(): BelongsTo
     {
         return $this->belongsTo(HomeChargerRequest::class, 'request_id', 'id');

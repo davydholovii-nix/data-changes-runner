@@ -9,6 +9,8 @@ enum Env: string {
 
     case LocalDms = 'local_dms';
 
+    case LocalCoulomb = 'local_coulomb';
+
     case QA = 'qa';
 }
 
@@ -24,7 +26,8 @@ function connect(Env $env = Env::Local, bool $default = false): bool {
     $credentials = match ($env) {
         Env::Local => local_credentials(),
         Env::LocalDms => local_dms_credentials(),
-        Env::QA => qa_credentials(),
+        Env::LocalCoulomb => local_coulomb(),
+        Env::QA => qa_coulomb(),
     };
     $connectionName = $default ? 'default' : $env->value;
     $capsule->addConnection($credentials, $connectionName);
@@ -38,7 +41,7 @@ function connect(Env $env = Env::Local, bool $default = false): bool {
     }
 }
 
-function qa_credentials(): array {
+function qa_coulomb(): array {
     return [
         'driver' => 'mysql',
         'host' => 'cp-qa-fra-nos-jumpbox-1.ev-chargepoint.com',
@@ -46,6 +49,20 @@ function qa_credentials(): array {
         'database' => 'coulomb',
         'username' => 'coulomb',
         'password' => getenv('QA_DB_PASSWORD'),
+        'charset' => 'utf8',
+        'collation' => 'utf8_unicode_ci',
+        'prefix' => 'clb_',
+    ];
+}
+
+function local_coulomb(): array {
+    return [
+        'driver' => 'mysql',
+        'host' => '127.0.0.1',
+        'port' => '33060',
+        'database' => 'dumper',
+        'username' => 'dumper',
+        'password' => 'dumper',
         'charset' => 'utf8',
         'collation' => 'utf8_unicode_ci',
         'prefix' => 'clb_',

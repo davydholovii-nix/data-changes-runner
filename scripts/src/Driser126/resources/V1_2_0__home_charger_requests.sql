@@ -29,4 +29,4 @@ CREATE TABLE dms_home_charger_requests
     driver_verf_values    TEXT             COMMENT 'JSON array of driver verification values in format [{"key": "", "value": ""}]',
     created_at            TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
     updated_at            TIMESTAMP        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

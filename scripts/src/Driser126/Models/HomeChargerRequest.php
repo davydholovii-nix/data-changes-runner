@@ -3,9 +3,11 @@
 namespace App\Driser126\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
- * @property-read int $id
+ * @property int $id
  * @property int $driver_id
  * @property int $company_id
  * @property int $connection_id
@@ -31,6 +33,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $state_id
  * @property string $state_code
  * @property string $state_name
+ * @property array $driver_verf_values
  * @property string $created_at
  * @property string $updated_at
  */
@@ -42,5 +45,14 @@ class HomeChargerRequest extends Model
 
     protected $casts = [
         'charger_deactivated' => 'bool',
+        'driver_verf_values' => 'json',
     ];
+
+    public function toArray()
+    {
+        return Collection::make(parent::toArray())
+            ->mapWithKeys(fn ($value, $key) => [Str::camel($key) => $value])
+            ->mapWithKeys(fn ($value, $key) => str_contains($key, 'date') || str_contains($key, 'edAt') ? [$key => $value ? date('Y-m-d H:i:s', strtotime($value)) : null] : [$key => $value])
+            ->toArray();
+    }
 }

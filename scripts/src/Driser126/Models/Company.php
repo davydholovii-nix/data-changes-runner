@@ -10,5 +10,5 @@ class Company extends \Illuminate\Database\Eloquent\Model
 {
     protected $table = 'company';
 
-    protected $connection = \Env::QA->value;
+    protected $connection = \Env::LocalCoulomb->value;
 }
