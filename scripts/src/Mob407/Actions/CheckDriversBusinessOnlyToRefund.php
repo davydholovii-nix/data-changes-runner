@@ -23,8 +23,8 @@ class CheckDriversBusinessOnlyToRefund
     {
         $drivers = self::query()->get();
 
-        $reportFile = $reportFolder . '/drivers_business_only_to_refund.csv';
-        $reportOutput = new StreamOutput(fopen($reportFile, 'w+'));
+        $reportFile = $reportFolder . '/group_2.csv';
+        $reportOutput = new StreamOutput(fopen($reportFile, 'a'));
 
         DriverReportWithRefund::print($drivers, $reportOutput);
 

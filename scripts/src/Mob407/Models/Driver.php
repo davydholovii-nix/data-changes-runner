@@ -5,16 +5,22 @@ namespace App\Mob407\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property int $id
  * @property bool $has_personal_sessions
  * @property bool $has_business_sessions
+ * @property bool $has_payments
  * @property bool $is_affected
+ * @property bool $leave_for_manual_check
+ * @property bool $starts_negative
+ * @property bool $balance_goes_down_only
  * @property bool $has_jan_only
  * @property float $balance
  *
  * @property-read PaymentHistory[]|\Illuminate\Database\Eloquent\Collection $payments
+ * @property-read DriverDetails $details
  *
  * @method static self|Builder affected()
  * @method static self|Builder hasOnlyBusinessSessions()
@@ -33,6 +39,10 @@ class Driver extends Model {
         'has_jan_only' => 'bool',
         'is_affected' => 'bool',
         'balance' => 'float',
+        'has_payments' => 'bool',
+        'leave_for_manual_check' => 'bool',
+        'starts_negative' => 'bool',
+        'balance_goes_down_only' => 'bool',
     ];
 
     /**
@@ -48,6 +58,11 @@ class Driver extends Model {
     public function payments(): HasMany
     {
         return $this->hasMany(PaymentHistory::class, 'user_id', 'id');
+    }
+
+    public function details(): HasOne
+    {
+        return $this->hasOne(DriverDetails::class, 'driver_id', 'id');
     }
 
     public function hasTopUps(): bool
@@ -77,19 +92,11 @@ class Driver extends Model {
 
     public function scopeHasNoPaymentMethod(Builder $query): Builder
     {
-        return $query->whereDoesntHave('payments', function (Builder $query) {
-            $query
-                ->whereNull('session_id') // If session ID is not empty then it just a manual fix
-                ->where('balance_diff','>', 0);
-        });
+        return $query->where('has_payments', 0);
     }
 
     public function scopeHasPaymentMethod(Builder $query): Builder
     {
-        return $query->whereHas('payments', function (Builder $query) {
-            $query
-                ->whereNull('session_id') // If session ID is not empty then it just a manual fix
-                ->where('balance_diff','>', 0);
-        });
+        return $query->where('has_payments', 1);
     }
 }

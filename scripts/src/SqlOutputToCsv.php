@@ -76,6 +76,7 @@ class SqlOutputToCsv
             return [];
         }
 
+        $line = trim($line, '|');
         $parsed = explode('|', $line);
         return array_map('trim', $parsed);
     }

@@ -16,4 +16,6 @@ $reportParser = new \App\Mob407\ReportParser(
 $reportParser->parse([
     'mob407_group2.csv',
     'mob407_group3.csv',
+    'mob407_fixed.csv',
+    'mob407_group1.csv',
 ]);

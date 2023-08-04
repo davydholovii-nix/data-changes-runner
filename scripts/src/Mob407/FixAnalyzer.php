@@ -3,7 +3,6 @@
 namespace App\Mob407;
 
 use App\Mob407\Actions\CheckAlreadyResetDrivers;
-use App\Mob407\Actions\GenerateAffectedDriversList;
 use App\Mob407\Actions\PrepareDriversTable;
 use App\Mob407\Actions\PreparePaymentHistoryTable;
 use App\Mob407\Actions\CheckDriversBusinessOnlyToRefund;
@@ -13,12 +12,13 @@ use App\Mob407\Actions\CheckDriversToResetBalance;
 use App\Mob407\Actions\CheckDriversBusinessToResetPaidAndRefund;
 use App\Mob407\Models\Driver;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Console\Output\StreamOutput;
 
 class FixAnalyzer
 {
     private ConsoleOutput $output;
 
-    public function __construct(private readonly string $rootPath)
+    public function __construct(private readonly string $rootPath, private readonly string $sourcesDir)
     {
         $this->output = new ConsoleOutput();
     }
@@ -28,7 +28,7 @@ class FixAnalyzer
         [$reportFolder, $migrationsFolder] = $this->createFolders();
 
         $this->output->writeln("Step 1: Prepare users and who have business sessions and are affected by MOB-407");
-        PrepareDriversTable::run($this->output, in_array('force_recreate_users_table', $options));
+        PrepareDriversTable::run($this->output, $reportFolder, $this->sourcesDir, in_array('force_recreate_users_table', $options));
 
         $this->output->writeln("Step 2: Create payments history based on user_payment_log");
         PreparePaymentHistoryTable::run($this->output, in_array('force_recreate_payments_history_table', $options));
@@ -54,8 +54,8 @@ class FixAnalyzer
         $this->output->writeln("Step 8: Create report of drivers with personal to refund only");
         CheckDriversPersonalOnlyToRefund::run($this->output, $reportFolder);
 
-        $this->output->writeln("Step 9: Affected drivers report");
-        GenerateAffectedDriversList::run($this->output, $reportFolder);
+        $this->output->writeln("Step 9: Create all the drivers file");
+        $this->createAllDriversFile($reportFolder);
 
         $this->output->writeln("");
         $this->output->writeln("Verification:");
@@ -86,6 +86,41 @@ class FixAnalyzer
 
         // Not covered drivers
         $this->notCoveredDrivers();
+    }
+
+    private function createAllDriversFile(string $reportFile): void
+    {
+//        $driversToResetBalanceOnly = CheckDriversToResetBalance::query()->select('id')->pluck('id')->toArray();
+        $driversToRefundOnly = CheckDriversBusinessOnlyToRefund::query()->select('id')->pluck('id')->toArray();
+        $driversToResetPaidAndRefund = CheckDriversBusinessToResetPaidAndRefund::query()->select('id')->pluck('id')->toArray();
+        $driversPersonalToResetPaidAndRefund = CheckDriversPersonalToResetPaidAndRefund::query()->select('id')->pluck('id')->toArray();
+        $driversPersonalToRefund = CheckDriversPersonalOnlyToRefund::query()->select('id')->pluck('id')->toArray();
+
+        $ids = array_merge(
+//            $driversToResetBalanceOnly,
+            $driversToRefundOnly,
+            $driversToResetPaidAndRefund,
+            $driversPersonalToResetPaidAndRefund,
+            $driversPersonalToRefund
+        );
+        $ids = array_unique($ids);
+
+        $filename = $reportFile . '/drivers_ids.txt';
+        $fs = fopen($filename, 'w');
+        $writer = new StreamOutput($fs);
+
+        $lineCount = 0;
+        foreach ($ids as $id) {
+            $writer->write($id . ",");
+            $lineCount++;
+
+            if ($lineCount === 10) {
+                $lineCount = 0;
+                $writer->write("\n");
+            }
+        }
+
+        fclose($fs);
     }
 
     private function checkIdsOverlap(): void
@@ -137,7 +172,7 @@ class FixAnalyzer
 
     private function createFolders(): array
     {
-        $mainFolder = $this->rootPath . '/var/mob407';
+        $mainFolder = $this->rootPath . '/var/mob407/June1';
 
         if (!file_exists($mainFolder)) {
             mkdir(directory: $mainFolder, recursive: true);

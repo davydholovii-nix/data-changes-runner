@@ -26,7 +26,12 @@ class CheckAlreadyResetDrivers
         $drivers = self::query()->get();
 
         $reportFile = $reportFolder . '/already_reset_drivers.csv';
-        $reportOutput = new StreamOutput(fopen($reportFile, 'w+'));
+        $stream = fopen($reportFile, 'w+');
+        if (!$stream) {
+            $output->writeln(sprintf(' - Unable to open file %s', $reportFile));
+            return;
+        }
+        $reportOutput = new StreamOutput($stream);
 
         DriverReport::print($drivers, $reportOutput);
 

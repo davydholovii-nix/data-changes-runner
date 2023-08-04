@@ -60,7 +60,10 @@ class PreparePaymentHistoryTable
                             continue;
                         }
 
-                        if ($paymentLog->account_balance === $prevBalance) {
+                        $prevBalanceAsInt = (int) ($prevBalance * 100);
+                        $paymentBalanceAsInt = (int) ($paymentLog->account_balance * 100);
+
+                        if ($paymentBalanceAsInt === $prevBalanceAsInt) {
                             continue;
                         }
 
@@ -71,7 +74,7 @@ class PreparePaymentHistoryTable
                                 'amount' => $paymentLog->amount,
                                 'balance_before' => $prevBalance,
                                 'balance_after' => $paymentLog->account_balance,
-                                'balance_diff' => $paymentLog->account_balance - $prevBalance,
+                                'balance_diff' => ($paymentBalanceAsInt - $prevBalanceAsInt) / 100,
                                 'created_at' => $paymentLog->create_date,
                             ]);
 
