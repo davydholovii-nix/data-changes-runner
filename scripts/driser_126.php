@@ -18,5 +18,5 @@ $migrator = new Migrator(
 $migrator
     ->connect()
     ->createTables(forceRecreate: $forceRecreate)
-//    ->import(freshImport: $freshImport);
+    ->import(freshImport: $freshImport)
     ->migrate(count: $count);

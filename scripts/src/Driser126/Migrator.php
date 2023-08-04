@@ -816,6 +816,7 @@ class Migrator
             'company_connection_fields',
             'company_driver_affiliation',
             'driver_connection_values',
+            'business_details',
             'leaseco_transaction',
         ];
 
