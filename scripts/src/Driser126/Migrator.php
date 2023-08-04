@@ -10,6 +10,7 @@ use Env;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Database\Capsule\Manager as DB;
+use Psr\Http\Client\ClientExceptionInterface;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 class Migrator
@@ -487,14 +488,18 @@ class Migrator
             body: $body
         );
 
-        $response = $client->sendRequest($request);
-        $data = json_decode($response->getBody(), true);
+        try {
+            $response = $client->sendRequest($request);
+            $data = json_decode($response->getBody(), true);
 
-        if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
-            return ['success' => true, 'data' => $data];
+            if ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) {
+                return ['success' => true, 'data' => $data];
+            }
+
+            return ['success' => false, 'data' => $data];
+        } catch (ClientExceptionInterface $e) {
+            return ['success' => false, 'data' => ['error' => $e->getMessage()]];
         }
-
-        return ['success' => false, 'data' => $data];
     }
 
     // -----------------------------------------------------------------------------
