@@ -53,7 +53,7 @@ class Migrator
      */
     private array $connectionNames = [];
 
-    private ?array $exportedRequests = null;
+    private array $exportedRequests = [];
 
     public function __construct(
         private readonly string $rootPath,
@@ -76,82 +76,76 @@ class Migrator
         }
     }
 
-    public function migrate(int $count): void
+    public function migrate(int $count, bool $withHistory): void
     {
         $this->logMessage('Migrating data NOS home installation jobs to DMS Home installations service');
 
-        $this->createHomeChargerRequests($count);
-        $this->createInstallerJobs();
+        $offset = 0;
+        $limit = $count ?: $this->countBusinessDetails();
+
+        while ($limit > 0) {
+            $chunkSize = min($limit, self::DEFAULT_CHUNK_SIZE);
+            $countRequests = $this->migrateHomeChargerRequests($chunkSize, $offset, $withHistory);
+            // Installations jobs chunk is limited by the business details found by processing the home charger requests
+            $countJobs = $this->migrateInstallerJobs();
+
+            $limit -= $chunkSize;
+            $offset += $chunkSize;
+        }
+
+        $this->logMessage(sprintf('Created %d home charger request(s) and %d installer job(s)', $countRequests, $countJobs));
     }
 
-    private function createHomeChargerRequests(int $count): int
+    private function migrateHomeChargerRequests(int $limit, int $offset, bool $withHistory): int
     {
-        $created = 0;
+        $createdRequests = [];
         $processed = 0;
-        $countBusinessDetails = $count ?: $this->countBusinessDetails();
-        $this->logMessage(sprintf('Processing %d row(s) from clb_business_details table', $countBusinessDetails));
+        $this->logMessage(sprintf('Processing %d row(s) from clb_business_details table', $limit));
 
-        foreach ($this->getBusinessDetails() as $businessDetails) {
-            $requestId = $this->convertBusinessDetailsToHomeChargerRequest($businessDetails);
+        foreach ($this->loadBusinessDetails($limit, $offset) as $businessDetails) {
+            $requestId = $withHistory
+                ? $this->exportHomeChargerRequest($businessDetails)
+                : $this->exportHomeChargerRequestWithHistory($businessDetails);
             $processed++;
 
-            // Log progress after every 50 rows
-            $this->logMessage(sprintf(
-                'Processed %d/%d clb_business_details row(s)',
-                $processed, $countBusinessDetails
-            ));
-
-            if ($count === 0) {
-                continue;
+            if ($requestId) {
+                $createdRequests[$requestId] = $requestId;
             }
 
-            $this->exportedRequests[$requestId] = [
+            if ($processed % 50 === 0) {
+                $this->logMessage(sprintf(
+                    'Processed %d/%d clb_business_details row(s)',
+                    $processed, $limit
+                ));
+            }
+
+            $keyPair = sprintf('%d-%d', $businessDetails->subscriber_id, $businessDetails->connection_id);
+            $this->exportedRequests[$keyPair] = [
+                'requestId' => $requestId,
                 'driverId' => $businessDetails->subscriber_id,
                 'connectionId' => $businessDetails->connection_id
             ];
-
-
-            if ($processed >= $count) {
-                break;
-            }
         }
 
-        $this->logMessage(sprintf(
-            'Created %d home charger request(s)',
-            $created
-        ));
-
-        return $processed;
+        return count($createdRequests);
     }
 
-    private function createInstallerJobs(): int
+    private function migrateInstallerJobs(): int
     {
         $processed = 0;
-        $countLeaseCoTransactions = count($this->exportedRequests) ?: $this->countLeaseCoTransactions();
+        $countLeaseCoTransactions = $this->countLeaseCoTransactions();
 
         $this->logMessage(sprintf('Processing %d row(s) from clb_leaseco_transactions table', $countLeaseCoTransactions));
+        $createdJobs = [];
 
-        foreach ($this->getLeaseCoTransactions() as $leaseCoTransaction) {
+        foreach ($this->loadLeaseCoTransactions() as $requestId => $leaseCoTransaction) {
             $processed++;
-            /** @var HomeChargerRequest|null $request */
-            $request = HomeChargerRequest::query()
-                ->where('driver_id', $leaseCoTransaction->user_id)
-                ->where('connection_id', $leaseCoTransaction->connection_id)
-                ->first();
 
-            if (empty($request)) {
-                $this->logMessage(sprintf(
-                    'Home charger request for driver_id %d and connection_id %d not found',
-                    $leaseCoTransaction->user_id,
-                    $leaseCoTransaction->connection_id
-                ), 'warn');
+            $jobId = $this->exportInstallerJob($leaseCoTransaction, $requestId);
 
-                continue;
+            if ($jobId) {
+                $createdJobs[$jobId] = $jobId;
             }
-
-            $installerJob = $this->prepareIJRequest($leaseCoTransaction, $request);
-
-            $this->exportIJ($installerJob);
 
             if ($processed % 50 === 0) {
                 $this->logMessage(sprintf(
@@ -161,49 +155,54 @@ class Migrator
             }
         }
 
-        $this->logMessage(sprintf(
-            'Created %d installer job(s)',
-            $processed
-        ));
-
-        return $processed;
+        return count($createdJobs);
     }
 
-    private function convertBusinessDetailsToHomeChargerRequest(BusinessDetails $businessDetails): int
+    private function exportHomeChargerRequest(BusinessDetails $businessDetails): int
     {
-        $numRequestsCreated = 0;
-
-        $request = HomeChargerRequest::query()
-            ->where('driver_id', $businessDetails->subscriber_id)
-            ->where('connection_id', $businessDetails->connection_id)
-            ->first();
         $transaction = $this->findLeaseCoTransaction($businessDetails->subscriber_id, $businessDetails->connection_id);
+        $request = $this->prepareHCRRequest($businessDetails, $transaction);
 
-        if ($request === null) {
-            $numRequestsCreated++;
-            $request = $this->prepareHCRRequest($businessDetails, $transaction);
-
-            $this->exportHCR($request);
-        }
+        $requestId = $this->exportHCR($request);
 
         if ($businessDetails->connection_approval_date) {
             // Another home charger request
             $request->updated_at = $businessDetails->connection_approval_date;
             $request->request_status = 'APPROVED';
-            $this->exportHCR($request);
+            $requestId = $this->exportHCR($request);
         }
 
         if (empty($businessDetails->connection_discontinue_date)) {
-            return $numRequestsCreated;
+            return $requestId;
         }
 
         $request->updated_at = $businessDetails->connection_discontinue_date;
         // if request has never got approved then it had been denied right away
         $request->request_status = $businessDetails->connection_approval_date ? 'DELETED' : 'DENIED';
-        $this->exportHCR($request);
 
+        return $this->exportHCR($request);
+    }
 
-        return $request->id ?: microtime(as_float: true) * 1000000;
+    private function exportHomeChargerRequestWithHistory(BusinessDetails $businessDetails): int
+    {
+        $transaction = $this->findLeaseCoTransaction($businessDetails->subscriber_id, $businessDetails->connection_id);
+        $request = $this->prepareHCRRequest($businessDetails, $transaction);
+
+        if ($businessDetails->connection_approval_date) {
+            // Another home charger request
+            $request->updated_at = $businessDetails->connection_approval_date;
+            $request->request_status = 'APPROVED';
+        }
+
+        if (empty($businessDetails->connection_discontinue_date)) {
+            return $this->exportHCR($request);
+        }
+
+        $request->updated_at = $businessDetails->connection_discontinue_date;
+        // if request has never got approved then it had been denied right away
+        $request->request_status = $businessDetails->connection_approval_date ? 'DELETED' : 'DENIED';
+
+        return $this->exportHCR($request);
     }
 
     private function prepareHCRRequest(
@@ -250,20 +249,20 @@ class Migrator
         return $request;
     }
 
+    private function exportInstallerJob(LeaseCoTransaction $leaseCoTransaction, int $requestId): ?int
+    {
+        $installerJob = $this->prepareIJRequest($leaseCoTransaction, $requestId);
+
+        return $this->exportIJ($installerJob);
+    }
+
     private function prepareIJRequest(
         LeaseCoTransaction $transaction,
-        HomeChargerRequest $request
+        int $requestId
     ): InstallerJob {
-        // TODO: Should we keep multiple installer jobs as we have in legacy system?
-        // TODO: The current behavior is to keep only one installer job per driver and connection
-        $installerJob = InstallerJob::findForDriverAndConnection($transaction->user_id, $transaction->connection_id);
-
-        if ($installerJob === null) {
-            $installerJob = new InstallerJob();
-            $installerJob->id = $transaction->id;
-        }
-
-        $installerJob->request_id = $request->id;
+        $installerJob = new InstallerJob();
+        $installerJob->id = $transaction->id;
+        $installerJob->request_id = $requestId;
         $installerJob->external_id = $transaction->external_id;
         $installerJob->employer_id = $transaction->employer_id;
         $installerJob->installer_id = $transaction->installer_id;
@@ -303,74 +302,7 @@ class Migrator
         $output->writeln(sprintf("[%s] %s %s", date('Y-m-d H:i:s'), strtoupper($level), $message));
     }
 
-    /**
-     * Wraps callable into an iterator to fetch data in chunks
-     *
-     * @param callable $fetcher Method that loads data from database. The method is called until reaches limit or returns empty array
-     * @param int $limit (Optional) Limit of rows to load
-     * @return \Iterator
-     */
-    private function createFetcherIterator(callable $fetcher, int $limit = 0): \Iterator
-    {
-        return new class ($fetcher, $limit) implements \Iterator {
-            private int $rowsFetched = 0;
-            private int $offset = 0;
-            private array $loaded = [];
-            private $current = null;
-
-            public function __construct(
-                private readonly \Closure $fetcher,
-                private readonly int $limit,
-            ) {}
-            public function next(): void {
-                $this->current = null;
-
-                if ($this->limit > 0 && $this->rowsFetched >= $this->limit) {
-                    return;
-                }
-
-                if (empty($this->loaded)) {
-                    $this->loaded = call_user_func($this->fetcher, $this->offset);
-                    $this->offset += count($this->loaded);
-
-                    if (empty($this->loaded)) {
-                        return;
-                    }
-                }
-
-                $this->rowsFetched++;
-                $this->current = array_shift($this->loaded);
-            }
-
-            public function rewind(): void
-            {
-                $this->rowsFetched = 0;
-                $this->offset = 0;
-                $this->loaded = [];
-            }
-
-            public function current(): mixed
-            {
-                return $this->current;
-            }
-
-            public function key(): mixed
-            {
-                return $this->rowsFetched;
-            }
-
-            public function valid(): bool
-            {
-                if (is_null($this->current)) {
-                    $this->next();
-                }
-
-                return !empty($this->current);
-            }
-        };
-    }
-
-    private function exportHCR(HomeChargerRequest $request): bool
+    private function exportHCR(HomeChargerRequest $request): ?int
     {
         static $exporter;
 
@@ -381,7 +313,7 @@ class Migrator
         return $exporter($request);
     }
 
-    private function exportIJ(InstallerJob $installerJob): bool
+    private function exportIJ(InstallerJob $installerJob): ?int
     {
         static $exporter;
 
@@ -396,14 +328,15 @@ class Migrator
     {
         return match ($this->exportMethod) {
             ExportMethod::JSON => function (HomeChargerRequest $r) {
+                $r->id = microtime(as_float:true) * 10000;
                 $this->logMessage($r->toJson());
-                return true;
+                return $r->id;
             },
             // DB exporter just saves request to local database
             ExportMethod::DB => function (HomeChargerRequest $r) {
-                $r->setConnection(self::EXPORT_OPTIONS[ExportMethod::DB->name])->save();
+                $r->setConnection(self::EXPORT_OPTIONS[ExportMethod::DB->name]['connection'])->save();
                 $this->logMessage(sprintf("Home charger request %s exported successfully", $r->id));
-                return true;
+                return $r->id;
             },
             // API exporter exports data to local DMS home installations
             ExportMethod::API => function (HomeChargerRequest $r) {
@@ -413,22 +346,21 @@ class Migrator
                     body: $r->toJson(),
                 );
 
-                if ($result['success']) {
-                    // The job export relies on request existence so saving it to DB as well
-                    if (!empty($result['data']['requestId']) && $r->id !== (int) $result['data']['requestId']) {
-                        $r->id = $result['data']['requestId'];
-                    }
-                    $r->save();
-                    $this->logMessage(sprintf("Home charger request %s exported successfully", $r->id));
-                    return true;
+                if (empty($result['success'])) {
+                    $this->logMessage(sprintf(
+                        "Home charger request for driver %d and connection %d export failed: %s",
+                        $r->driver_id, $r->connection_id, $result['data']['error'] ?? ''
+                    ), 'error');
+
+                    return null;
                 }
 
                 $this->logMessage(sprintf(
-                    "Home charger request for driver %d and connection %d export failed: %s",
-                    $r->driver_id, $r->connection_id, $result['data']['error'] ?? ''
-                ), 'error');
+                    "Home charger request for driver %d and connection %d exported successfully",
+                    $r->driver_id, $r->connection_id
+                ));
 
-                return false;
+                return $result['data']['requestId'] ?? null;
             }
         };
     }
@@ -437,15 +369,16 @@ class Migrator
     {
         return match ($this->exportMethod) {
             ExportMethod::JSON => function (InstallerJob $ij) {
+                $ij->id = microtime(as_float:true) * 10000;
                 $this->logMessage($ij->toJson());
 
                 return true;
             },
             ExportMethod::DB => function (InstallerJob $ij) {
-                $ij->setConnection(self::EXPORT_OPTIONS[ExportMethod::DB->name])->save();
+                $ij->setConnection(self::EXPORT_OPTIONS[ExportMethod::DB->name]['connection'])->save();
                 $this->logMessage(sprintf("Installer job %s exported successfully", $ij->id));
 
-                return true;
+                return $ij->id;
             },
             ExportMethod::API => function (InstallerJob $ij) {
                 $result = $this->callApiEndpoint(
@@ -453,18 +386,17 @@ class Migrator
                     body: $ij->toJson(),
                 );
 
-                if ($result['success']) {
-                    $this->logMessage(sprintf("Installer job for request %d has been exported", $ij->request_id));
-
-                    return true;
+                if (empty($result['success'])) {
+                    $this->logMessage(sprintf(
+                        'Cannot export installer job for request %d. Response: %s',
+                        $ij->request_id, json_encode($result['data'] ?: null)
+                    ));
+                    return null;
                 }
 
-                $this->logMessage(sprintf(
-                    'Cannot export installer job for request %d. Response: %s',
-                    $ij->request_id, json_encode($result['data'] ?: null)
-                ));
+                $this->logMessage(sprintf("Installer job for request %d has been exported", $ij->request_id));
 
-                return false;
+                return $result['data']['jobId'] ?? null;
             },
         };
     }
@@ -507,32 +439,6 @@ class Migrator
     // ----------------------- Read/Write database methods -------------------------
     // -----------------------------------------------------------------------------
 
-    /**
-     * Returns business details within an iterator
-     * From iterator perspective it contains all the business details, but they are not loaded
-     * in memory all at once but slice by slice
-     *
-     * @return \Iterator|BusinessDetails[]
-     */
-    private function getBusinessDetails(): \Iterator
-    {
-        return $this->createFetcherIterator($this->loadBusinessDetails(...));
-    }
-
-    /**
-     * Returns leaseco transactions within an iterator
-     * From iterator perspective it contains all the business details, but they are not loaded
-     * in memory all at once but slice by slice
-     *
-     * @return \Iterator|LeaseCoTransaction[]
-     */
-    private function getLeaseCoTransactions(): \Iterator
-    {
-        return $this->createFetcherIterator(
-            $this->loadLeaseCoTransactions(...), // Function that loads transactions from database
-        );
-    }
-
     private function findLeaseCoTransaction(int $driverId, int $connectionId): ?LeaseCoTransaction
     {
         /** @var LeaseCoTransaction|null $transaction */
@@ -545,10 +451,10 @@ class Migrator
         return $transaction;
     }
 
-    private function loadBusinessDetails(int $offset): array
+    private function loadBusinessDetails(int $limit, int $offset): array
     {
         return BusinessDetails::toImport()
-            ->limit(self::DEFAULT_CHUNK_SIZE)
+            ->limit($limit)
             ->offset($offset)
             ->get()
             ->all();
@@ -561,36 +467,47 @@ class Migrator
 
     private function countLeaseCoTransactions(): int
     {
-        return LeaseCoTransaction::query()->count();
-    }
-
-    private function loadLeaseCoTransactions(int $offset): array
-    {
-        if (is_null($this->exportedRequests)) {
-            return LeaseCoTransaction::query()
-                ->orderBy('id')
-                ->limit(self::DEFAULT_CHUNK_SIZE)
-                ->offset($offset)
-                ->get()
-                ->all();
+        if (empty($this->exportedRequests)) {
+            return 0;
         }
 
+        $query = LeaseCoTransaction::query()->orderBy('id');
+
+        foreach($this->exportedRequests as $values) {
+            $query->orWhere(fn ($query) =>
+            $query->where('user_id', $values['driverId'])
+                ->where('connection_id', $values['connectionId']));
+        }
+
+        return $query->count();
+    }
+
+    private function loadLeaseCoTransactions(): array
+    {
         if (empty($this->exportedRequests)) {
             return [];
         }
 
-        $limit = self::DEFAULT_CHUNK_SIZE;
         $query = LeaseCoTransaction::query()->orderBy('id');
 
-        while ($limit > 0 && !empty($this->exportedRequests)) {
-            $values = array_shift($this->exportedRequests);
+        foreach($this->exportedRequests as $values) {
             $query->orWhere(fn ($query) =>
                 $query->where('user_id', $values['driverId'])
                     ->where('connection_id', $values['connectionId']));
-            $limit--;
         }
 
-        return $query->get()->all();
+        $result = $query->get()->all();
+        $mappedByRequestId = [];
+
+        foreach($result as $transaction) {
+            $keyPair = $transaction->user_id . '-' . $transaction->connection_id;
+
+            $mappedByRequestId[$this->exportedRequests[$keyPair]['requestId']] = $transaction;
+        }
+
+        $this->exportedRequests = [];
+
+        return $mappedByRequestId;
     }
 
     private function getDriverEmail(int $driverId): string
