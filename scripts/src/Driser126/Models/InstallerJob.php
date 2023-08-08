@@ -4,6 +4,8 @@ namespace App\Driser126\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -54,5 +56,13 @@ class InstallerJob extends Model
     public function request(): BelongsTo
     {
         return $this->belongsTo(HomeChargerRequest::class, 'request_id', 'id');
+    }
+
+    public function toArray()
+    {
+        return Collection::make(parent::toArray())
+            ->mapWithKeys(fn ($value, $key) => [Str::camel($key) => $value])
+            ->mapWithKeys(fn ($value, $key) => str_contains($key, 'date') || str_contains($key, 'edAt') ? [$key => $value ? date('Y-m-d H:i:s', strtotime($value)) : null] : [$key => $value])
+            ->toArray();
     }
 }

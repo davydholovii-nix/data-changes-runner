@@ -149,7 +149,7 @@ class Migrator
                 continue;
             }
 
-            $installerJob = $this->convertLeaseCoTransactionToInstallerJob($leaseCoTransaction, $request);
+            $installerJob = $this->prepareIJRequest($leaseCoTransaction, $request);
 
             $this->exportIJ($installerJob);
 
@@ -181,7 +181,7 @@ class Migrator
 
         if ($request === null) {
             $numRequestsCreated++;
-            $request = $this->createPendingHomeChargerRequest($businessDetails, $transaction);
+            $request = $this->prepareHCRRequest($businessDetails, $transaction);
 
             $this->exportHCR($request);
         }
@@ -206,7 +206,7 @@ class Migrator
         return $request->id ?: microtime(as_float: true) * 1000000;
     }
 
-    private function createPendingHomeChargerRequest(
+    private function prepareHCRRequest(
         BusinessDetails $businessDetails,
         ?LeaseCoTransaction $transaction = null
     ): HomeChargerRequest {
@@ -250,7 +250,7 @@ class Migrator
         return $request;
     }
 
-    private function convertLeaseCoTransactionToInstallerJob(
+    private function prepareIJRequest(
         LeaseCoTransaction $transaction,
         HomeChargerRequest $request
     ): InstallerJob {
@@ -280,6 +280,7 @@ class Migrator
         $installerJob->job_status = $transaction->job_status;
         $installerJob->activation_date = $transaction->activation_date;
         $installerJob->completion_date = $transaction->completion_date;
+        $installerJob->installation_date = $transaction->installation_date;
         $installerJob->created_at = $transaction->create_date;
         $installerJob->updated_at = $transaction->update_date;
         $installerJob->synced_to_nos = true;
