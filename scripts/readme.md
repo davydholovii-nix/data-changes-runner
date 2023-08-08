@@ -20,4 +20,4 @@ To be added...
 Run from terminal:
 
 1. Start DMS home installations locally
-2. `php driser_126.php --force-recreate --export-method=api --count=10`
+2. `php driser_126.php --force-recreate --export-method=api --count=10` (`--with-history` an optional to export history)
