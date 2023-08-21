@@ -7,9 +7,12 @@ use App\Mob407\V3\Reports\Group2Report;
 use App\Mob407\V3\Reports\Group3Report;
 use App\Mob407\V3\Reports\GroupWithRefundsReport;
 use App\Mob407\V3\Tasks\CreateBalanceHistoryTableTask;
+use App\Mob407\V3\Tasks\CreateCoulombTablesTask;
 use App\Mob407\V3\Tasks\CreateDriversTableTask;
 use App\Mob407\V3\Tasks\CreateDriversWithBusinessSessionsTableTask;
 use App\Mob407\V3\Tasks\GenerateFakeZeroPaymentLogsTask;
+use App\Mob407\V3\Tasks\ImportCoulombSessionsTask;
+use App\Mob407\V3\Tasks\ImportUserPaymentLogTask;
 use App\Mob407\V3\Tasks\InsertBalanceHistoryTask;
 use App\Mob407\V3\Tasks\InsertDriversFromDetailsFileTask;
 use App\Mob407\V3\Tasks\InsertDriversWithBusinessSessionsTask;
@@ -23,9 +26,12 @@ class Mob407AnalyzerV3
     public const OPTION_RECALCULATE_DRIVERS_FLAGS = 'recalculate_users_flags';
     public const OPTION_RECALCULATE_DRIVERS_BALANCE_HISTORY = 'recalculate_users_balance_history';
 
+    public const OPTION_IMPORT_DATA = 'import_data';
+
     private const DEFAULT_OPTIONS = [
         self::OPTION_RECALCULATE_DRIVERS_FLAGS => false,
         self::OPTION_RECALCULATE_DRIVERS_BALANCE_HISTORY => false,
+        self::OPTION_IMPORT_DATA => false,
     ];
 
     public function __construct(
@@ -36,11 +42,18 @@ class Mob407AnalyzerV3
 
     public function run(array $options = self::DEFAULT_OPTIONS)
     {
-        $logFile = $this->rootFolder . '/logs/mob407.log';
+        $logFile = $this->rootFolder . '/logs/mob828.log';
         $log = fopen($logFile, 'a');
         $logger = new StreamOutput($log);
 
         $consoleOutput = new ConsoleOutput();
+
+        if ($this->importData($options)) {
+            $this->runDataImport($logger, $consoleOutput);
+
+            exit(0);
+        }
+
         $consoleOutput->writeln('Analyzer Mob407 v3 started');
 
         $this->basicPreparation($logger, $consoleOutput);
@@ -139,6 +152,11 @@ class Mob407AnalyzerV3
         return $options[self::OPTION_RECALCULATE_DRIVERS_BALANCE_HISTORY] ?? false;
     }
 
+    private function importData(array $options): bool
+    {
+        return $options[self::OPTION_IMPORT_DATA] ?? false;
+    }
+
     private function runBalanceHistoryRecalculation(Output $logger, Output $consoleOutput): void
     {
         $consoleOutput->writeln('Recalculating drivers balance history');
@@ -159,4 +177,84 @@ class Mob407AnalyzerV3
         $consoleOutput->writeln(' - Done');
     }
 
+    private function runDataImport(Output $logger, Output $output): void
+    {
+        $output->writeln('Importing data');
+
+        CreateCoulombTablesTask::init($logger, $output)->run();
+
+        ImportCoulombSessionsTask::init($logger, $output)
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE . '_1',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_1.json'
+            )
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE . '_2',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_2.json'
+            )
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE . '_3',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_3.json'
+            )
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE . '_4',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_4.json'
+            )
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE . '_5',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_5.json'
+            )
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE_EXT . '_1',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_ext_1.json'
+            )
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE_EXT . '_2',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_ext_2.json'
+            )
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE_EXT . '_3',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_ext_3.json'
+            )
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE_EXT . '_4',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_ext_4.json'
+            )
+            ->addSourceFile(
+                ImportCoulombSessionsTask::SOURCE_CLB_EXTERNAL_VEHICLE_CHARGE_EXT . '_5',
+                $this->sourcesDir . '/mob828_external_vehicle_charge_ext_5.json'
+            )
+            ->run();
+
+        ImportUserPaymentLogTask::init($logger, $output)
+            ->addSourceFile(
+                ImportUserPaymentLogTask::SOURCE_CLB_USER_PAYMENT_LOG . "_1",
+                $this->sourcesDir . "/mob828_user_payment_log_1.json"
+            )
+            ->addSourceFile(
+                ImportUserPaymentLogTask::SOURCE_CLB_USER_PAYMENT_LOG . "_2",
+                $this->sourcesDir . "/mob828_user_payment_log_2.json"
+            )
+            ->addSourceFile(
+                ImportUserPaymentLogTask::SOURCE_CLB_USER_PAYMENT_LOG . "_3",
+                $this->sourcesDir . "/mob828_user_payment_log_3.json"
+            )
+            ->addSourceFile(
+                ImportUserPaymentLogTask::SOURCE_CLB_USER_PAYMENT_LOG . "_4",
+                $this->sourcesDir . "/mob828_user_payment_log_4.json"
+            )
+            ->addSourceFile(
+                ImportUserPaymentLogTask::SOURCE_CLB_USER_PAYMENT_LOG . "_5",
+                $this->sourcesDir . "/mob828_user_payment_log_5.json"
+            )
+            ->addSourceFile(
+                ImportUserPaymentLogTask::SOURCE_CLB_USER_PAYMENT_LOG . "_6",
+                $this->sourcesDir . "/mob828_user_payment_log_6.json"
+            )
+            ->addSourceFile(
+                ImportUserPaymentLogTask::SOURCE_CLB_USER_PAYMENT_LOG . "_7",
+                $this->sourcesDir . "/mob828_user_payment_log_7.json"
+            )
+            ->run();
+    }
 }
