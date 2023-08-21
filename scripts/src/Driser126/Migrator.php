@@ -104,8 +104,8 @@ class Migrator
 
         foreach ($this->loadBusinessDetails($limit, $offset) as $businessDetails) {
             $requestId = $withHistory
-                ? $this->exportHomeChargerRequest($businessDetails)
-                : $this->exportHomeChargerRequestWithHistory($businessDetails);
+                ? $this->exportHomeChargerRequestWithHistory($businessDetails)
+                : $this->exportHomeChargerRequest($businessDetails);
             $processed++;
 
             if ($requestId) {
@@ -158,7 +158,7 @@ class Migrator
         return count($createdJobs);
     }
 
-    private function exportHomeChargerRequest(BusinessDetails $businessDetails): int
+    private function exportHomeChargerRequestWithHistory(BusinessDetails $businessDetails): int
     {
         $transaction = $this->findLeaseCoTransaction($businessDetails->subscriber_id, $businessDetails->connection_id);
         $request = $this->prepareHCRRequest($businessDetails, $transaction);
@@ -183,10 +183,10 @@ class Migrator
         return $this->exportHCR($request);
     }
 
-    private function exportHomeChargerRequestWithHistory(BusinessDetails $businessDetails): int
+    private function exportHomeChargerRequest(BusinessDetails $businessDetails): int
     {
-        $transaction = $this->findLeaseCoTransaction($businessDetails->subscriber_id, $businessDetails->connection_id);
-        $request = $this->prepareHCRRequest($businessDetails, $transaction);
+        $leaseCoTransaction = $this->findLeaseCoTransaction($businessDetails->subscriber_id, $businessDetails->connection_id);
+        $request = $this->prepareHCRRequest($businessDetails, $leaseCoTransaction);
 
         if ($businessDetails->connection_approval_date) {
             // Another home charger request
