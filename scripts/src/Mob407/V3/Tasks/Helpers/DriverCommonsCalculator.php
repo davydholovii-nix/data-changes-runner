@@ -8,6 +8,8 @@ use League\Csv\Reader;
 
 trait DriverCommonsCalculator
 {
+    use JsonReader;
+
     private array $organizations = [];
 
     /** @var null|array List of previously fixed drivers from the group 1 */
@@ -29,9 +31,20 @@ trait DriverCommonsCalculator
         return in_array($driverId, $this->previouslyFixedDrivers);
     }
 
-    protected function isAffected(int $driverId): bool
+    protected function getPreviouslyFixedAt(int $driverId): ?string
     {
-        if (!$this->isPreviouslyFixed($driverId)) { // Check by migration
+        if (is_null($this->previouslyFixedDrivers)) {
+            $this->previouslyFixedDrivers = $this->readAsCommaSeparatedList('previously_fixed_group1');
+        }
+
+        return in_array($driverId, $this->previouslyFixedDrivers)
+            ? '2023-06-12 19:55:17'
+            : null;
+    }
+
+    protected function isAffected(int $driverId, ?string $previouslyFixedAt = null): bool
+    {
+        if (empty($previouslyFixedAt)) { // Check by migration
             $sql = "
                 SELECT session_id
                 FROM clb_balance_history
@@ -44,21 +57,25 @@ trait DriverCommonsCalculator
             return !empty(DB::connection()->select($sql, [$driverId]));
         }
 
-        $dataFixDate = '2023-02-20 16:20:46';
         $sql = "
             SELECT 1 
-            FROM clb_user_payment_log
-            WHERE user_id = ?
-              AND create_date > ?
-              AND account_balance < 0
+            FROM clb_user_payment_log pl 
+            join clb_external_vehicle_charge evc on evc.id = pl.vc_id and pl.user_id = evc.user_id 
+            join clb_external_vehicle_charge_ext evce on evce.evc_id = evc.id
+            WHERE evce.transaction_type = 'BUSINESS' 
+              and pl.user_id = ?
+              AND pl.create_date > ?
+              AND pl.account_balance < 0
             LIMIT 1
         ";
 
-        return !empty(DB::connection()->select($sql, [$driverId, $dataFixDate]));
+        return !empty(DB::connection()->select($sql, [$driverId, $previouslyFixedAt]));
     }
 
     public function getAffectedDate(int $driverId): string
     {
+        static $driverIds = [];
+
         $sql = "
             SELECT created_at
             FROM clb_balance_history
@@ -73,7 +90,11 @@ trait DriverCommonsCalculator
             ->select($sql, [$driverId]);
 
         if (empty($result)) {
-            throw new \Exception(sprintf('Affected date for driver %d not found', $driverId));
+            if (count($driverIds) < 10) {
+                $driverIds[] = $driverId;
+                return '2023-01-01';
+            }
+            throw new \Exception(sprintf('Affected date for driver %s not found', implode(',', $driverIds)));
         }
 
         return $result[0]->created_at;
@@ -114,6 +135,7 @@ trait DriverCommonsCalculator
             SELECT evc.id, evce.transaction_type, evc.total_amount_to_user
             FROM clb_external_vehicle_charge evc 
             JOIN clb_external_vehicle_charge_ext evce ON evce.evc_id = evc.id 
+            JOIN clb_user_payment_log pl ON pl.vc_id = evc.id
             WHERE evce.transaction_type = 'PERSONAL'
             AND evc.user_id = ?
             AND evc.total_amount_to_user > 0
@@ -180,16 +202,14 @@ trait DriverCommonsCalculator
 
     private function readOrganizations(string $organizationsFile): array
     {
-        $csv = fopen($organizationsFile, 'r');
-        $reader = Reader::createFromStream($csv)->setHeaderOffset(0);
-
         $result = [];
 
-        foreach ($reader->getRecords() as $organization) {
+        foreach ($this->getJsonFileReader($organizationsFile) as $organization) {
+            if (empty($organization['organization_id'])) {
+                continue;
+            }
             $result[$organization['id']] = $organization['organization_id'];
         }
-
-        fclose($csv);
 
         return $result;
     }

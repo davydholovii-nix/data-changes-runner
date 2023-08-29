@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $has_personal_sessions
  * @property bool $has_income
  * @property bool $has_refunds
+ * @property null|string $previously_fixed_at
  */
 class Driver extends Model
 {

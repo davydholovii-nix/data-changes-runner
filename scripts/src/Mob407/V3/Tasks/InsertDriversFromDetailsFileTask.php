@@ -4,7 +4,9 @@ namespace App\Mob407\V3\Tasks;
 
 use App\Mob407\V3\Helpers\HasExtraOutput;
 use App\Mob407\V3\Helpers\HasSources;
+use App\Mob407\V3\Helpers\Progress;
 use App\Mob407\V3\Tasks\Helpers\DriverCommonsCalculator;
+use App\Mob407\V3\Tasks\Helpers\JsonReader;
 use League\Csv\Reader;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Illuminate\Database\Capsule\Manager as DB;
@@ -14,26 +16,32 @@ class InsertDriversFromDetailsFileTask extends AbstractTask
     use HasSources;
     use HasExtraOutput;
     use DriverCommonsCalculator;
+    use JsonReader;
 
     public function run(): void
     {
-        $csv = fopen($this->getSourceFile('driver_details'), 'r');
-        $reader = Reader::createFromStream($csv)->setHeaderOffset(0);
+        $filename = $this->getSourceFile('driver_details');
 
-        $progress = new ProgressBar($this->getOutput(), $reader->count());
-        $progress->start();
+        $progress = Progress::init($this->getOutput(), $this->countLines($filename));
 
-        foreach ($reader->getRecords() as $driver) {
+        foreach ($this->getJsonFileReader($filename) as $driver) {
+            if ($driver === null) {
+                continue;
+            }
+
             $progress->advance();
 
             $insertItem = $this->insertDataFormDetails($driver);
             $insertItem['has_business_sessions'] = $this->hasBusinessSessions($driver['driver_id']);
             if (!$insertItem['has_business_sessions']) {
-                throw new \Exception(sprintf('The driver %d from driver details has no business sessions', $driver['driver_id']));
+                $this->writeExtra('has_no_business_sessions', $driver['driver_id'] . ',');
+                continue;
             }
-            $insertItem['is_affected'] = $insertItem['has_business_sessions'] && $this->isAffected($driver['driver_id']);
+            $insertItem['previously_fixed_at'] = $this->getPreviouslyFixedAt($driver['driver_id']);
+            $insertItem['is_affected'] = $this->isAffected($driver['driver_id'], $insertItem['previously_fixed_at']);
             if (!$insertItem['is_affected']) {
-                throw new \Exception(sprintf('The driver %d from driver details file is not affected', $driver['driver_id']));
+                $this->writeExtra('is_not_affected', $driver['driver_id'] . ',');
+                continue;
             }
             $insertItem['balance'] = $this->getBalance($driver['driver_id']);
             $insertItem['org_code'] = $this->getOrganizationCode($driver['org_id'] ?? 0) ?: '';
@@ -44,9 +52,7 @@ class InsertDriversFromDetailsFileTask extends AbstractTask
             DB::table('drivers')->insert($insertItem);
         }
 
-        fclose($csv);
-        $this->getOutput()->write("\x0D"); // Move the cursor to the beginning of the line
-        $this->getOutput()->write("\x1B[2K"); // Clear the entire line
+        $progress->finish(clean: true);
     }
 
     private function insertDataFormDetails(array $details): array

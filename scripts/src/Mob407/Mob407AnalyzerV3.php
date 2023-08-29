@@ -48,20 +48,44 @@ class Mob407AnalyzerV3
 
         $consoleOutput = new ConsoleOutput();
 
+        // Running the script requires some manual preparation to be done
+
+        // 1. Make sure the previously imported sessions are removed and new data is imported
+        // otherwise the script will work with old data and create wrong reports
+        // Action: run this script with --import-data|-i option
         if ($this->importData($options)) {
             $this->runDataImport($logger, $consoleOutput);
 
             exit(0);
         }
 
+        // 2. Prepare file with previously fixed drivers from migration
+        // it's needed so the balance drop will not be considered as a replenishment
+        // Action: create file in the source folder with comma separated list of driver id whose account where fixed
+        // file name must be previously_fixed_drivers.txt
+
+        // 3.
+
         $consoleOutput->writeln('Analyzer Mob407 v3 started');
 
+        // Basic preparation does:
+        // 1. creates aggregated table with drivers who has business sessions (for making calculations faster)
+        // 2. inserts fake user payment log for drivers who have initial negative account balance for proper refund calculation
         $this->basicPreparation($logger, $consoleOutput);
 
+        // Recalculating driver history creates payments history based on clb_user_payment_logs
+        // payment history is just simplified version that suits better the current task
         if ($this->recalculateBalanceHistory($options)) {
             $this->runBalanceHistoryRecalculation($logger, $consoleOutput);
         }
 
+        // Recalculating driver flags creates drivers table where each driver has the next flags:
+        // 1. has_business_sessions
+        // 2. has_personal_sessions
+        // 3. has_income
+        // 4. has_refunds
+        // 5. is_affected
+        // 7. previously fixed date
         if ($this->recalculateDriversFlags($options)) {
             $this->runDriversRecalculation($logger, $consoleOutput);
         }
@@ -127,11 +151,13 @@ class Mob407AnalyzerV3
         $consoleOutput->writeln(' - Inserting in drivers from details file...');
 
         InsertDriversFromDetailsFileTask::init($logger, $consoleOutput)
-            ->addSourceFile('driver_details', $this->sourcesDir . '/driver_details.csv')
-            ->addSourceFile('organizations', $this->sourcesDir . '/organizations.csv')
+            ->addSourceFile('driver_details', $this->sourcesDir . '/driver_details.json')
+            ->addSourceFile('organizations', $this->sourcesDir . '/organizations.json')
             ->addSourceFile('previously_fixed_group1', $this->sourcesDir . '/previously_fixed_group1.txt')
             ->addExtraOutput('starts_with_negative', $this->reportsFolder . '/starts_with_negative.txt')
             ->addExtraOutput('verify_manually', $this->reportsFolder . '/verify_manually.txt')
+            ->addExtraOutput('has_no_business_sessions', $this->reportsFolder . '/has_no_business_sessions.txt')
+            ->addExtraOutput('is_not_affected', $this->reportsFolder . '/is_not_affected.txt')
             ->run();
 
         $consoleOutput->writeln(' - Done');

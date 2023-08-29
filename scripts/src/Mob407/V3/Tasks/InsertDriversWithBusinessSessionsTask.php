@@ -4,6 +4,7 @@ namespace App\Mob407\V3\Tasks;
 
 use App\Mob407\V3\Helpers\HasExtraOutput;
 use App\Mob407\V3\Helpers\HasSources;
+use App\Mob407\V3\Helpers\Progress;
 use App\Mob407\V3\Models\Driver;
 use Illuminate\Database\Capsule\Manager as DB;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -20,8 +21,7 @@ class InsertDriversWithBusinessSessionsTask extends AbstractTask
             ->select('driver_id')
             ->orderBy('driver_id');
 
-        $progress = new ProgressBar($this->getOutput(), $query->clone()->count());
-        $progress->start();
+        $progress = Progress::init($this->getOutput(), $query->clone()->count());
 
         $insert = [];
 
@@ -35,7 +35,8 @@ class InsertDriversWithBusinessSessionsTask extends AbstractTask
             $insertItem = [];
             $insertItem['id'] = $row->driver_id;
             $insertItem['has_business_sessions'] = true;
-            $insertItem['is_affected'] = $this->isAffected($row->driver_id);
+            $insertItem['previously_fixed_at'] = $this->getPreviouslyFixedAt($row->driver_id);
+            $insertItem['is_affected'] = $this->isAffected($row->driver_id, $insertItem['previously_fixed_at']);
 
             if (!$insertItem['is_affected']) {
                 continue;
@@ -60,7 +61,6 @@ class InsertDriversWithBusinessSessionsTask extends AbstractTask
             DB::table('drivers')->insert($insert);
         }
 
-        $this->getOutput()->write("\x0D"); // Move the cursor to the beginning of the line
-        $this->getOutput()->write("\x1B[2K"); // Clear the entire line
+        $progress->finish(clean: true);
     }
 }

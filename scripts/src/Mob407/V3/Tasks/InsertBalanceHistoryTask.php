@@ -3,6 +3,7 @@
 namespace App\Mob407\V3\Tasks;
 
 use App\Mob407\V3\Helpers\HasExtraOutput;
+use App\Mob407\V3\Helpers\Progress;
 use Illuminate\Database\Capsule\Manager as DB;
 use Illuminate\Database\Query\Expression;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -11,7 +12,7 @@ class InsertBalanceHistoryTask extends AbstractTask
 {
     use HasExtraOutput;
 
-    private ?ProgressBar $progress;
+    private ?Progress $progress;
     public function run(): void
     {
         $countAll = DB::table('user_payment_log')
@@ -23,8 +24,7 @@ class InsertBalanceHistoryTask extends AbstractTask
             )
             ->count();
 
-        $this->progress = new ProgressBar($this->getOutput(), $countAll);
-        $this->progress->start();
+        $this->progress = Progress::init($this->getOutput(), $countAll);
 
         DB::table('drivers_with_business_sessions')
             ->select('driver_id')
@@ -33,7 +33,7 @@ class InsertBalanceHistoryTask extends AbstractTask
                 foreach ($rows as $row) {
                     if (!DB::table('user_payment_log')->where('user_id', $row->driver_id)->exists()) {
                         $this->log(sprintf('Driver %d has no payment log', $row->driver_id), 'warning');
-                        $this->writeExtra('no_payment_drivers', $row->driver_id);
+                        $this->writeExtra('no_payment_drivers', $row->driver_id . ',');
                         continue;
                     }
 
@@ -41,8 +41,7 @@ class InsertBalanceHistoryTask extends AbstractTask
                 }
             });
 
-        $this->getOutput()->write("\x0D"); // Move the cursor to the beginning of the line
-        $this->getOutput()->write("\x1B[2K"); // Clear the entire line
+        $this->progress->finish();
     }
 
     private function insertDriverBalanceHistory(int $driverId): void
@@ -104,15 +103,15 @@ class InsertBalanceHistoryTask extends AbstractTask
             }
 
             if ($row->type == 8 && $diff != 0) {
-                $this->writeExtra('personal_charged', $driverId);
+                $this->writeExtra('personal_charged', $driverId . ',');
             }
 
             if ($row->type == 5 && $diff != 0) {
-                $this->writeExtra('purchase_card', $driverId);
+                $this->writeExtra('purchase_card', $driverId . ',');
             }
 
             if (is_null($row->amount)) {
-                $this->writeExtra('null_amount', $driverId);
+                $this->writeExtra('null_amount', $driverId . ',');
             }
 
             $insert[] = $insertItem;

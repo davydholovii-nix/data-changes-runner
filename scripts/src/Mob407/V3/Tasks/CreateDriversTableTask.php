@@ -40,6 +40,7 @@ class CreateDriversTableTask extends AbstractTask
             $table->boolean('has_personal_sessions')->default(false);
             $table->boolean('has_income')->default(false);
             $table->boolean('has_refunds')->default(false);
+            $table->timestamp('previously_fixed_at')->nullable();
         });
     }
 }

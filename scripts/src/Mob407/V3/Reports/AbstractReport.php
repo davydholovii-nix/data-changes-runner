@@ -4,8 +4,8 @@ namespace App\Mob407\V3\Reports;
 
 use App\Mob407\V3\Helpers\HasExtraOutput;
 use App\Mob407\V3\Helpers\HasLogger;
+use App\Mob407\V3\Helpers\Progress;
 use App\Mob407\V3\Models\Driver;
-use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\Output;
 use Symfony\Component\Console\Output\StreamOutput;
 use Illuminate\Database\Capsule\Manager as DB;
@@ -39,8 +39,7 @@ abstract class AbstractReport
 
     public function generate(): void
     {
-        $progress = new ProgressBar($this->getOutput(), $this->getQuery()->count());
-        $progress->start();
+        $progress = Progress::init($this->getOutput(), $this->getQuery()->count());
 
         $summary = $this->initialSummary();
 
@@ -63,8 +62,7 @@ abstract class AbstractReport
                 }
             });
 
-        $this->getOutput()->write("\x0D"); // Move the cursor to the beginning of the line
-        $this->getOutput()->write("\x1B[2K"); // Clear the entire line
+        $progress->finish(clean: true);
 
         $this->getOutput()->writeln('  Drivers affected: ' . $summary['drivers']);
         $this->getOutput()->writeln('  Sessions affected: ' . $summary['affectedSessions']);
@@ -165,7 +163,7 @@ abstract class AbstractReport
 
         $result = DB::select($sql, ['driverId' => $driverId]);
 
-        if (empty($result)) {
+        if (empty($result) || is_null(current($result)->amount_to_refund)) {
             throw new \RuntimeException('No balance history for driver ' . $driverId);
         }
 

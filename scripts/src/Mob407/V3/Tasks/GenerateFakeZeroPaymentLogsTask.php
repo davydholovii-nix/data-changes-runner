@@ -31,19 +31,20 @@ class GenerateFakeZeroPaymentLogsTask extends AbstractTask
             ->where('type', 4)
             ->where('transaction_status', 1)
             ->where('data', 'FAKE')
+            ->whereIn('user_id', $drivers)
             ->delete();
 
         $insertData = Collection::make($drivers)
             ->map(fn ($driverId) => [
                 'user_id' => $driverId,
                 'vc_id' => null,
-                'amount' => 0,
+                'amount' => 1000, // should be greater then 0
                 'account_balance' => 0,
                 'type' => 4,
                 'transaction_status' => 1,
                 'status' => 1,
                 'data' => 'FAKE',
-                'create_date' => '2022-08-01 00:00:00',
+                'create_date' => '2023-06-12 19:55:00',
             ])
             ->toArray();
 
@@ -56,7 +57,7 @@ class GenerateFakeZeroPaymentLogsTask extends AbstractTask
     {
         $fileName = $this->getSourceFile('starts_with_negative');
         $commaSeparatedDriverIds = file_get_contents($fileName);
-        $driverIds = explode(',', $commaSeparatedDriverIds);
+        $driverIds = array_unique(explode(',', $commaSeparatedDriverIds));
         $driverIds = array_map('intval', $driverIds);
 
         $existingDrivers = DB::table('drivers_with_business_sessions')

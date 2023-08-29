@@ -4,6 +4,7 @@ namespace App\Mob407\V3\Tasks;
 
 use App\Mob407\V3\Helpers\HasLogger;
 use App\Mob407\V3\Helpers\HasSources;
+use App\Mob407\V3\Helpers\Progress;
 use App\Mob407\V3\Tasks\Helpers\JsonReader;
 use Illuminate\Database\Capsule\Manager as DB;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -36,9 +37,7 @@ class ImportCoulombSessionsTask extends AbstractTask
         while ($i < 10) {
             try {
                 $filename = $this->getSourceFile($tableName . '_' . $i);
-                $progress = new ProgressBar($this->getOutput(), $this->countLines($filename));
-                $progress->setFormat("\r%current%/%max% [%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %memory:6s%");
-                $progress->start();
+                $progress = Progress::init($this->getOutput(), $this->countLines($filename));
 
                 foreach ($this->getJsonFileReader($filename) as $line) {
                     $progress->advance();
@@ -65,8 +64,7 @@ class ImportCoulombSessionsTask extends AbstractTask
                 break;
             }
 
-            $this->getOutput()->write("\x0D"); // Move the cursor to the beginning of the line
-            $this->getOutput()->write("\x1B[2K"); // Clear the entire line
+            $progress->finish(clean: true);
 
             $this->getOutput()->writeln("File $filename processed.");
             $i++;
