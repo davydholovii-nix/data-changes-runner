@@ -1,3 +1,6 @@
+name: Workflow configuration
+run-name: ${{ github.actor }} executed ${{ github.event.inputs.filename }} on ${{ github.event.inputs.environment }}
+
 on:
   workflow_dispatch:
     inputs:
