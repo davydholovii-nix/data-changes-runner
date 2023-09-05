@@ -2,9 +2,8 @@ name: workflow_configuration
 run-name: ${{ github.actor }} executed ${{ github.event.inputs.filename }} on ${{ github.event.inputs.environment }}
 
 on:
-  branch:
-    - main
   workflow_dispatch:
+    branches: [main]
     inputs:
       environment:
         description: 'Environment to deploy to'
