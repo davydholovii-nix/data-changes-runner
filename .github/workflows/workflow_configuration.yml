@@ -1,0 +1,26 @@
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'qa'
+      filename:
+        description: 'File to execute'
+        required: true
+        default: 'MY_TASK-1/update_smth.sql'
+
+jobs:
+  print-action-configs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Print action configurations
+        run: |
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Filename: ${{ github.event.inputs.filename }}"
+          echo "File content:"
+          cat "${{ github.event.inputs.filename }}"
+
+
