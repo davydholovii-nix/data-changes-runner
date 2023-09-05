@@ -31,7 +31,7 @@ jobs:
           echo "Filename: ${{ github.event.inputs.filename }}"
           DB_HOST="${{ secrets.DB_HOST }}_unsecreted"
           echo "DB_HOST: ${DB_HOST}"
-          echo "qa_eu_db_host"
+          echo "this_is_qa_eu_db_host_value"
           echo "File content:"
           cat "$GITHUB_WORKSPACE/readme.md"
 
