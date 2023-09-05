@@ -7,7 +7,11 @@ on:
       environment:
         description: 'Environment to deploy to'
         required: true
-        default: 'qa'
+        type: choice
+        default: 'QA EU'
+        options:
+          - 'QA EU'
+          - 'PROD EU'
       filename:
         description: 'File to execute'
         required: true
