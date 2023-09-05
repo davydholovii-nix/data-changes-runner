@@ -1,0 +1,44 @@
+name: SQL scripts runner
+on:
+  workflow_dispatch:
+    branches: [ main ]
+    inputs:
+      environment:
+        description: 'Environment to execute SQL script on'
+        required: true
+        type: choice
+        default: 'QA EU'
+        options:
+          - 'QA EU'
+          - 'PROD EU'
+      filename:
+        description: 'Path to SQL script'
+        required: true
+        default: 'MY_TASK-1/update_example_table.sql'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install MySQL client
+        run: sudo apt-get install mysql-client
+
+      - name: Execution details
+        run: |
+          echo "Script name: $SCRIPT_NAME"
+          echo "Script path: sql/$SCRIPT_NAME"
+        env:
+          SCRIPT_NAME: ${{ github.event.inputs.filename }}
+
+      - name: Run SQL script
+        run: |
+          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" -vv < "$GITHUB_WORKSPACE/sql/$SCRIPT_NAME"
+        env:
+          SCRIPT_NAME: ${{ github.event.inputs.filename }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
