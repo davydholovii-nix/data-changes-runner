@@ -21,13 +21,13 @@ jobs:
   print-action-configs:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
       - name: Print action configurations
         run: |
           echo "Environment: ${{ github.event.inputs.environment }}"
           echo "Filename: ${{ github.event.inputs.filename }}"
           echo "File content:"
-          cat "${{ github.event.inputs.filename }}"
+          cat "$GITHUB_WORKSPACE/readme.md"
 
 
