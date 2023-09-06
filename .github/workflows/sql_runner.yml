@@ -21,6 +21,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          # The MySQL docker container requires these environment variables to be set
+          # so we can create and migrate the test database.
+          # See: https://hub.docker.com/_/mysql
+          MYSQL_DATABASE: ${{ secrets.DB_NAME }}
+          MYSQL_USER: ${{ secrets.DB_USER }}
+          MYSQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        ports:
+          # Opens port 3306 on service container and host
+          # https://docs.github.com/en/actions/using-containerized-services/about-service-containers
+          - 3306:3306
+          # Before continuing, verify the mysql container is reachable from the ubuntu host
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -30,16 +48,14 @@ jobs:
 
       - name: Execution details
         run: |
-          echo "Script name: $SCRIPT_NAME"
-          echo "Script path: sql/$SCRIPT_NAME"
-        env:
-          SCRIPT_NAME: ${{ github.event.inputs.filename }}
+          echo "Script name: ${{ github.event.inputs.filename }}"
+          echo "Script path: sql/${{ github.event.inputs.filename }}"
 
       - name: Run SQL script
         run: |
-          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" -vv < "$GITHUB_WORKSPACE/sql/$SCRIPT_NAME"
+          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$GITHUB_WORKSPACE/sql/${{ github.event.inputs.filename }}"
         env:
-          SCRIPT_NAME: ${{ github.event.inputs.filename }}
+          DB_NAME: ${{ secrets.DB_NAME }}
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
           DB_USER: ${{ secrets.DB_USER }}
