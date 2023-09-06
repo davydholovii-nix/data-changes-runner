@@ -9,10 +9,9 @@ on:
         description: 'Environment to execute SQL script on'
         required: true
         type: choice
-        default: 'QA EU'
+        default: 'PROD DEMO'
         options:
-          - 'QA EU'
-          - 'PROD EU'
+          - 'PROD DEMO'
       filename:
         description: 'Path to SQL script'
         required: true
