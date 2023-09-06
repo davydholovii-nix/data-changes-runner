@@ -45,6 +45,8 @@ jobs:
 
       - name: Install MySQL client
         run: sudo apt-get install mysql-client
+      - run: |
+          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$GITHUB_WORKSPACE/sql/DB_PREP/create_example_table.sql"
 
       - name: Execution details
         run: |
