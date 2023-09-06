@@ -15,7 +15,7 @@ on:
       filename:
         description: 'Path to SQL script'
         required: true
-        default: 'MY_TASK-1/update_example_table.sql'
+        default: 'MY_TASK-1/add_more_examples.sql'
 
 jobs:
   build:
