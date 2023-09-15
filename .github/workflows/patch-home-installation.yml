@@ -1,4 +1,4 @@
-name: Data changes using SQL script
+name: Patch home installation
 run-name: ${{ github.actor }} executed ${{ github.event.inputs.filename }} on ${{ github.event.inputs.environment }}
 
 on:
