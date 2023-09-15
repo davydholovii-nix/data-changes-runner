@@ -1,6 +1,9 @@
 # You can find more details about teams and their meanagers here:
 # https://chargepoint.atlassian.net/wiki/spaces/EN/pages/1626739516/Cloud+and+Applications+Teams+Services
 
+# Protect code owners file
+/CODEOWNERS @davydholovii-nix
+
 # Driver services team
 # The team has access to the next tables:
 #  - coulomb.clb_leaseco_transaction
