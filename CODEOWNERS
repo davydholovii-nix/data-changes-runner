@@ -1,0 +1,12 @@
+# You can find more details about teams and their meanagers here:
+# https://chargepoint.atlassian.net/wiki/spaces/EN/pages/1626739516/Cloud+and+Applications+Teams+Services
+
+# Driver services team
+# The team has access to the next tables:
+#  - coulomb.clb_leaseco_transaction
+#  - coulomb.clb_business_details
+#  - coulomb.clb_company_driver_affiliation
+#  - coulomb.clb_company_connetion_fields
+#  - coulomb.clb_driver_connection_values
+/home-installations @davydholovii-nix
+/.github/workflows/sql_runner.yml @davydholovii-nix
