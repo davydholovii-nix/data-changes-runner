@@ -15,8 +15,8 @@ on:
         options:
           - 'HI QA'
           - 'HI PROD'
-      script_name:
-        description: 'SQL file path (located in sql/ directory)'
+      filename:
+        description: 'Path to SQL script (relative to /home-installation-patches)'
         required: true
         default: 'DRISER-0001/replace_job_mac.sql'
 
@@ -50,6 +50,7 @@ jobs:
         run: sudo apt-get install mysql-client
       - run: |
           mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$GITHUB_WORKSPACE/home-installation-patches/DRISER-XXXX/prepare_demo_db.sql"
+        name: prepare db
         env:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_HOST: ${{ secrets.DB_HOST }}
