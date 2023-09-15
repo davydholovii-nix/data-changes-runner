@@ -7,8 +7,8 @@ on:
       env:
         description: |
           Environment to execute SQL script on
-           - Both QA and PROD are EU environments
-           - *HI stands for Home Installation
+             *Both QA and PROD are EU environments
+             **HI stands for Home Installation
         required: true
         type: choice
         default: 'HI QA'
