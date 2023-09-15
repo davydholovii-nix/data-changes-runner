@@ -1,24 +1,27 @@
-name: SQL scripts runner
+name: Data changes using SQL script
 run-name: ${{ github.actor }} executed ${{ github.event.inputs.filename }} on ${{ github.event.inputs.environment }}
 
 on:
   workflow_dispatch:
-    branches: [ main ]
     inputs:
-      environment:
-        description: 'Environment to execute SQL script on'
+      env:
+        description: |
+          Environment to execute SQL script on
+           - Both QA and PROD are EU environments
+           - *HI stands for Home Installation
         required: true
         type: choice
-        default: 'PROD DEMO'
+        default: 'HI QA'
         options:
-          - 'PROD DEMO'
-      filename:
-        description: 'Path to SQL script'
+          - 'HI QA'
+          - 'HI PROD'
+      script_name:
+        description: 'SQL file path (located in sql/ directory)'
         required: true
-        default: 'MY_TASK-1/add_more_examples.sql'
+        default: 'DRISER-0001/replace_job_mac.sql'
 
 jobs:
-  build:
+  run-sql-script:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
     services:
@@ -57,12 +60,13 @@ jobs:
       - name: Execution details
         run: |
           echo "Script name: ${{ github.event.inputs.filename }}"
-          echo "Script path: sql/${{ github.event.inputs.filename }}"
+          echo "Script path: home-installation-patches/${{ github.event.inputs.filename }}"
 
       - name: Run SQL script
         run: |
-          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$GITHUB_WORKSPACE/sql/${{ github.event.inputs.filename }}"
+          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$SCRIPTS_DIR/${{ github.event.inputs.filename }}"
         env:
+          SCRIPTS_DIR: ${{ github.workspace }}/home-installation-patches
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
