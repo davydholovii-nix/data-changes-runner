@@ -23,7 +23,7 @@ on:
 jobs:
   run-sql-script:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+    environment: ${{ github.event.inputs.env }}
     services:
       mysql:
         image: mysql:8.0
@@ -49,7 +49,7 @@ jobs:
       - name: Install MySQL client
         run: sudo apt-get install mysql-client
       - run: |
-          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$GITHUB_WORKSPACE/home-installation-patches/DRISER-XXXX/prepare_demo_db.sql"
+          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$GITHUB_WORKSPACE/home-installations/DRISER-XXXX/prepare_demo_db.sql"
         name: prepare db
         env:
           DB_NAME: ${{ secrets.DB_NAME }}
