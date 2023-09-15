@@ -49,7 +49,7 @@ jobs:
       - name: Install MySQL client
         run: sudo apt-get install mysql-client
       - run: |
-          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "${{ github.workspace }}/home-installation-patches/DRISER-XXXX/prepare_demo_db.sql"
+          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$GITHUB_WORKSPACE/home-installation-patches/DRISER-XXXX/prepare_demo_db.sql"
         env:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_HOST: ${{ secrets.DB_HOST }}
@@ -64,9 +64,9 @@ jobs:
 
       - name: Run SQL script
         run: |
-          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$SCRIPTS_DIR/${{ github.event.inputs.filename }}"
+          mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$GITHUB_WORKSPACE/$SCRIPTS_DIR/${{ github.event.inputs.filename }}"
         env:
-          SCRIPTS_DIR: ${{ github.workspace }}/home-installation-patches
+          SCRIPTS_DIR: home-installation-patches
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
