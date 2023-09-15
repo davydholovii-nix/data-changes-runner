@@ -1,8 +1,9 @@
 # You can find more details about teams and their meanagers here:
 # https://chargepoint.atlassian.net/wiki/spaces/EN/pages/1626739516/Cloud+and+Applications+Teams+Services
 
-# Protect code owners file
-/CODEOWNERS @davydholovii-nix
+# Require manager approval for creating new workflows and adding code owners
+/.github/workflows @davydholovii-nix # Replace with correct managers list
+/CODEOWNERS @davydholovii-nix # Replace with correct managers list
 
 # Driver services team
 # The team has access to the next tables:
