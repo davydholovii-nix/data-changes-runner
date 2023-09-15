@@ -67,7 +67,7 @@ jobs:
         run: |
           mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -vv < "$GITHUB_WORKSPACE/$SCRIPTS_DIR/${{ github.event.inputs.filename }}"
         env:
-          SCRIPTS_DIR: home-installation-patches
+          SCRIPTS_DIR: home-installations
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
